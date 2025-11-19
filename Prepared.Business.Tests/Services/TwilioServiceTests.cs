@@ -27,7 +27,9 @@ public class TwilioServiceTests
 
         // Setup configuration
         _configurationMock.Setup(c => c["Twilio:WebhookUrl"]).Returns("https://example.com");
-        _configurationMock.Setup(c => c["Twilio:AuthToken"]).Returns("test-auth-token");
+        _configurationMock.Setup(c => c["Twilio:AccountSid"]).Returns("AC123456789");
+        _configurationMock.Setup(c => c["Twilio:KeySid"]).Returns("SK123456789");
+        _configurationMock.Setup(c => c["Twilio:SecretKey"]).Returns("test-secret-key");
 
         _service = new TwilioService(_loggerMock.Object, _configurationMock.Object, _transcriptHubMock.Object, _callRepositoryMock.Object);
     }
@@ -232,18 +234,54 @@ public class TwilioServiceTests
     }
 
     [Fact]
-    public void Constructor_WithMissingAuthToken_ShouldThrow()
+    public void Constructor_WithMissingAccountSid_ShouldThrow()
     {
         // Arrange
         var invalidConfig = new Mock<IConfiguration>();
         invalidConfig.Setup(c => c["Twilio:WebhookUrl"]).Returns("https://example.com");
-        invalidConfig.Setup(c => c["Twilio:AuthToken"]).Returns((string?)null);
+        invalidConfig.Setup(c => c["Twilio:AccountSid"]).Returns((string?)null);
+        invalidConfig.Setup(c => c["Twilio:KeySid"]).Returns("SK123456789");
+        invalidConfig.Setup(c => c["Twilio:SecretKey"]).Returns("test-secret-key");
 
         // Act & Assert
         var exception = Assert.Throws<InvalidOperationException>(() =>
             new TwilioService(_loggerMock.Object, invalidConfig.Object, _transcriptHubMock.Object, _callRepositoryMock.Object));
         
-        exception.Message.Should().Contain("Twilio:AuthToken");
+        exception.Message.Should().Contain("Twilio:AccountSid");
+    }
+
+    [Fact]
+    public void Constructor_WithMissingKeySid_ShouldThrow()
+    {
+        // Arrange
+        var invalidConfig = new Mock<IConfiguration>();
+        invalidConfig.Setup(c => c["Twilio:WebhookUrl"]).Returns("https://example.com");
+        invalidConfig.Setup(c => c["Twilio:AccountSid"]).Returns("AC123456789");
+        invalidConfig.Setup(c => c["Twilio:KeySid"]).Returns((string?)null);
+        invalidConfig.Setup(c => c["Twilio:SecretKey"]).Returns("test-secret-key");
+
+        // Act & Assert
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            new TwilioService(_loggerMock.Object, invalidConfig.Object, _transcriptHubMock.Object, _callRepositoryMock.Object));
+        
+        exception.Message.Should().Contain("Twilio:KeySid");
+    }
+
+    [Fact]
+    public void Constructor_WithMissingSecretKey_ShouldThrow()
+    {
+        // Arrange
+        var invalidConfig = new Mock<IConfiguration>();
+        invalidConfig.Setup(c => c["Twilio:WebhookUrl"]).Returns("https://example.com");
+        invalidConfig.Setup(c => c["Twilio:AccountSid"]).Returns("AC123456789");
+        invalidConfig.Setup(c => c["Twilio:KeySid"]).Returns("SK123456789");
+        invalidConfig.Setup(c => c["Twilio:SecretKey"]).Returns((string?)null);
+
+        // Act & Assert
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            new TwilioService(_loggerMock.Object, invalidConfig.Object, _transcriptHubMock.Object, _callRepositoryMock.Object));
+        
+        exception.Message.Should().Contain("Twilio:SecretKey");
     }
 
     [Fact]
