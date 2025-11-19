@@ -1,1 +1,48 @@
 # Prepared
+
+## Overview
+
+Prepared is a real-time call processing application that receives phone calls via Twilio, transcribes audio in real-time, extracts location information, and visualizes it on an interactive map.
+
+## High-Level Architecture Flow
+
+```
+Caller dials → Twilio handles call → Streams audio to your app → 
+Transcribe in real time → Update browser with transcript →
+Summarize + extract location → Drop pin on map in UI
+```
+
+### Process Flow
+
+1. **Caller dials** → Twilio receives the call
+2. **Twilio handles call** → Routes to your application
+3. **Streams audio to your app** → Real-time audio stream processing
+4. **Transcribe in real time** → Live transcription of the audio
+5. **Update browser with transcript** → Real-time UI updates via WebSocket/SSE
+6. **Summarize + extract location** → Process transcript to find location data
+7. **Drop pin on map in UI** → Visualize location on an interactive map
+
+## Project Structure
+
+- **Prepared.Client**: ASP.NET Core MVC web application (Frontend)
+- **Prepared.Business**: Business logic layer with services and interfaces (class lib)
+- **Prepared.Data**: Data access layer with repositories and entities (class lib)
+- **Prepared.Common**: Shared models, enums, interfaces, and utilities (class lib)
+- **Prepared.ServiceDefaults**: Aspire service defaults
+- **Prepared.AppHost**: Aspire application host
+
+## Test Projects
+
+- **Prepared.Client.Tests**: Tests for the MVC web application
+- **Prepared.Business.Tests**: Tests for business logic layer
+- **Prepared.Data.Tests**: Tests for data access layer
+- **Prepared.Common.Tests**: Tests for shared components
+
+## Technology Stack
+
+- .NET 10.0
+- ASP.NET Core MVC
+- xUnit (Testing)
+- Twilio (Call handling and audio streaming)
+- Real-time transcription
+- Interactive mapping
