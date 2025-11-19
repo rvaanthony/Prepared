@@ -221,5 +221,43 @@ public class TranscriptHubServiceTests
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
+
+    [Fact]
+    public async Task BroadcastSummaryUpdateAsync_WithValidData_ShouldSendToGroup()
+    {
+        // Arrange
+        var callSid = "CA123456789";
+        var summary = "Summary text";
+        var keyFindings = new[] { "Finding 1", "Finding 2" };
+
+        // Act
+        await _service.BroadcastSummaryUpdateAsync(callSid, summary, keyFindings);
+
+        // Assert
+        _clientProxyMock.Verify(
+            x => x.SendCoreAsync(
+                "SummaryUpdate",
+                It.Is<object[]>(args => args.Length == 1),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task BroadcastSummaryUpdateAsync_WithEmptySummary_ShouldNotSend()
+    {
+        // Arrange
+        var callSid = "CA123456789";
+
+        // Act
+        await _service.BroadcastSummaryUpdateAsync(callSid, string.Empty);
+
+        // Assert
+        _clientProxyMock.Verify(
+            x => x.SendCoreAsync(
+                It.IsAny<string>(),
+                It.IsAny<object[]>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
 }
 

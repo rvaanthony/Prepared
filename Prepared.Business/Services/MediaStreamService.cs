@@ -11,17 +11,24 @@ public class MediaStreamService : IMediaStreamService
     private readonly ILogger<MediaStreamService> _logger;
     private readonly ITranscriptHub _transcriptHub;
     private readonly ITranscriptionService _transcriptionService;
+    private readonly ISummarizationService _summarizationService;
+    private readonly ILocationExtractionService _locationExtractionService;
     private readonly Dictionary<string, DateTime> _activeStreams = new();
     private readonly Dictionary<string, string> _streamToCallMapping = new(); // Maps StreamSid to CallSid
+    private readonly Dictionary<string, List<string>> _transcriptBuffers = new(); // CallSid => transcript segments
 
     public MediaStreamService(
         ILogger<MediaStreamService> logger,
         ITranscriptHub transcriptHub,
-        ITranscriptionService transcriptionService)
+        ITranscriptionService transcriptionService,
+        ISummarizationService summarizationService,
+        ILocationExtractionService locationExtractionService)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _transcriptHub = transcriptHub ?? throw new ArgumentNullException(nameof(transcriptHub));
         _transcriptionService = transcriptionService ?? throw new ArgumentNullException(nameof(transcriptionService));
+        _summarizationService = summarizationService ?? throw new ArgumentNullException(nameof(summarizationService));
+        _locationExtractionService = locationExtractionService ?? throw new ArgumentNullException(nameof(locationExtractionService));
     }
 
     public async Task HandleStreamStartAsync(string streamSid, string callSid, CancellationToken cancellationToken = default)
@@ -91,11 +98,13 @@ public class MediaStreamService : IMediaStreamService
                         isFinal: false,
                         cancellationToken);
 
-                    if (transcriptionResult?.Text is { Length: > 0 })
+                    if (transcriptionResult?.Text is { Length: > 0 } text)
                     {
+                        AppendTranscript(callSid, text);
+
                         await _transcriptHub.BroadcastTranscriptUpdateAsync(
                             callSid,
-                            transcriptionResult.Text,
+                            text,
                             transcriptionResult.IsFinal,
                             cancellationToken);
                     }
@@ -143,6 +152,7 @@ public class MediaStreamService : IMediaStreamService
 
             // Clean up mappings
             _streamToCallMapping.Remove(streamSid);
+            await GenerateInsightsAsync(callSid, cancellationToken);
 
             // Here you would typically:
             // 1. Finalize the transcript
@@ -158,6 +168,59 @@ public class MediaStreamService : IMediaStreamService
                 "Error handling stream stop: StreamSid={StreamSid}, CallSid={CallSid}",
                 streamSid, callSid);
             throw;
+        }
+    }
+
+    private void AppendTranscript(string callSid, string text)
+    {
+        if (!_transcriptBuffers.TryGetValue(callSid, out var segments))
+        {
+            segments = new List<string>();
+            _transcriptBuffers[callSid] = segments;
+        }
+
+        segments.Add(text);
+    }
+
+    private async Task GenerateInsightsAsync(string callSid, CancellationToken cancellationToken)
+    {
+        if (!_transcriptBuffers.TryGetValue(callSid, out var segments) || segments.Count == 0)
+        {
+            return;
+        }
+
+        var transcriptText = string.Join(" ", segments);
+        _transcriptBuffers.Remove(callSid);
+
+        try
+        {
+            var summaryTask = _summarizationService.SummarizeAsync(callSid, transcriptText, cancellationToken);
+            var locationTask = _locationExtractionService.ExtractAsync(callSid, transcriptText, cancellationToken);
+
+            var summary = await summaryTask;
+            if (summary != null)
+            {
+                await _transcriptHub.BroadcastSummaryUpdateAsync(
+                    callSid,
+                    summary.Summary,
+                    summary.KeyFindings,
+                    cancellationToken);
+            }
+
+            var location = await locationTask;
+            if (location?.Latitude is double lat && location.Longitude is double lng)
+            {
+                await _transcriptHub.BroadcastLocationUpdateAsync(
+                    callSid,
+                    lat,
+                    lng,
+                    location.FormattedAddress,
+                    cancellationToken);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating insights for CallSid={CallSid}", callSid);
         }
     }
 }

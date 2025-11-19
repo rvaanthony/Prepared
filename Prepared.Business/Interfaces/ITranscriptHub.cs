@@ -44,5 +44,14 @@ public interface ITranscriptHub
         double longitude,
         string? address = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Broadcasts a transcript summary update to all clients connected to a call.
+    /// </summary>
+    Task BroadcastSummaryUpdateAsync(
+        string callSid,
+        string summary,
+        IEnumerable<string>? keyFindings = null,
+        CancellationToken cancellationToken = default);
 }
 

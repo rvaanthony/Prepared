@@ -12,6 +12,8 @@ public class MediaStreamServiceTests
     private readonly Mock<ILogger<MediaStreamService>> _loggerMock;
     private readonly Mock<ITranscriptHub> _transcriptHubMock;
     private readonly Mock<ITranscriptionService> _transcriptionServiceMock;
+    private readonly Mock<ISummarizationService> _summarizationServiceMock;
+    private readonly Mock<ILocationExtractionService> _locationExtractionServiceMock;
     private readonly MediaStreamService _service;
 
     public MediaStreamServiceTests()
@@ -19,10 +21,14 @@ public class MediaStreamServiceTests
         _loggerMock = new Mock<ILogger<MediaStreamService>>();
         _transcriptHubMock = new Mock<ITranscriptHub>();
         _transcriptionServiceMock = new Mock<ITranscriptionService>();
+        _summarizationServiceMock = new Mock<ISummarizationService>();
+        _locationExtractionServiceMock = new Mock<ILocationExtractionService>();
         _service = new MediaStreamService(
             _loggerMock.Object,
             _transcriptHubMock.Object,
-            _transcriptionServiceMock.Object);
+            _transcriptionServiceMock.Object,
+            _summarizationServiceMock.Object,
+            _locationExtractionServiceMock.Object);
     }
 
     [Fact]
@@ -99,7 +105,7 @@ public class MediaStreamServiceTests
                 It.IsAny<ReadOnlyMemory<byte>>(),
                 false,
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Prepared.Common.Models.TranscriptionResult
+            .ReturnsAsync(new TranscriptionResult
             {
                 CallSid = callSid,
                 StreamSid = streamSid,
@@ -229,6 +235,77 @@ public class MediaStreamServiceTests
     }
 
     [Fact]
+    public async Task HandleStreamStopAsync_WithTranscripts_ShouldGenerateInsights()
+    {
+        // Arrange
+        var streamSid = "MZ123456789";
+        var callSid = "CA123456789";
+        await _service.HandleStreamStartAsync(streamSid, callSid);
+        _transcriptionServiceMock
+            .Setup(x => x.TranscribeAsync(
+                callSid,
+                streamSid,
+                It.IsAny<ReadOnlyMemory<byte>>(),
+                false,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new TranscriptionResult
+            {
+                CallSid = callSid,
+                StreamSid = streamSid,
+                Text = "The caller reports a fire near 123 Main Street.",
+                IsFinal = false
+            });
+        _summarizationServiceMock
+            .Setup(x => x.SummarizeAsync(callSid, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new TranscriptSummary
+            {
+                CallSid = callSid,
+                Summary = "Fire near 123 Main Street",
+                KeyFindings = new[] { "Structure fire", "Evacuation in progress" }
+            });
+        _locationExtractionServiceMock
+            .Setup(x => x.ExtractAsync(callSid, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new LocationExtractionResult
+            {
+                CallSid = callSid,
+                Latitude = 37.7749,
+                Longitude = -122.4194,
+                FormattedAddress = "123 Main Street, San Francisco, CA"
+            });
+
+        await _service.ProcessMediaDataAsync(streamSid, Convert.ToBase64String(new byte[] { 1, 2, 3 }), "media");
+
+        // Act
+        await _service.HandleStreamStopAsync(streamSid, callSid);
+
+        // Assert
+        _summarizationServiceMock.Verify(
+            x => x.SummarizeAsync(callSid, It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+
+        _transcriptHubMock.Verify(
+            x => x.BroadcastSummaryUpdateAsync(
+                callSid,
+                It.IsAny<string>(),
+                It.IsAny<IEnumerable<string>>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+
+        _locationExtractionServiceMock.Verify(
+            x => x.ExtractAsync(callSid, It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+
+        _transcriptHubMock.Verify(
+            x => x.BroadcastLocationUpdateAsync(
+                callSid,
+                37.7749,
+                -122.4194,
+                "123 Main Street, San Francisco, CA",
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
     public async Task HandleStreamStopAsync_ShouldLogStreamStop()
     {
         // Arrange
@@ -295,7 +372,7 @@ public class MediaStreamServiceTests
     {
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new MediaStreamService(null!, _transcriptHubMock.Object, _transcriptionServiceMock.Object));
+            new MediaStreamService(null!, _transcriptHubMock.Object, _transcriptionServiceMock.Object, _summarizationServiceMock.Object, _locationExtractionServiceMock.Object));
     }
 
     [Fact]
@@ -303,7 +380,7 @@ public class MediaStreamServiceTests
     {
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new MediaStreamService(_loggerMock.Object, null!, _transcriptionServiceMock.Object));
+            new MediaStreamService(_loggerMock.Object, null!, _transcriptionServiceMock.Object, _summarizationServiceMock.Object, _locationExtractionServiceMock.Object));
     }
 
     [Fact]
@@ -311,7 +388,21 @@ public class MediaStreamServiceTests
     {
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new MediaStreamService(_loggerMock.Object, _transcriptHubMock.Object, null!));
+            new MediaStreamService(_loggerMock.Object, _transcriptHubMock.Object, null!, _summarizationServiceMock.Object, _locationExtractionServiceMock.Object));
+    }
+
+    [Fact]
+    public void Constructor_WithNullSummarizationService_ShouldThrow()
+    {
+        Assert.Throws<ArgumentNullException>(() =>
+            new MediaStreamService(_loggerMock.Object, _transcriptHubMock.Object, _transcriptionServiceMock.Object, null!, _locationExtractionServiceMock.Object));
+    }
+
+    [Fact]
+    public void Constructor_WithNullLocationService_ShouldThrow()
+    {
+        Assert.Throws<ArgumentNullException>(() =>
+            new MediaStreamService(_loggerMock.Object, _transcriptHubMock.Object, _transcriptionServiceMock.Object, _summarizationServiceMock.Object, null!));
     }
 
     [Fact]

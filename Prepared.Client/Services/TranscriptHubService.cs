@@ -148,6 +148,45 @@ public class TranscriptHubService : ITranscriptHub
         }
     }
 
+    public async Task BroadcastSummaryUpdateAsync(
+        string callSid,
+        string summary,
+        IEnumerable<string>? keyFindings = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(callSid))
+            {
+                _logger.LogWarning("Attempted to broadcast summary with empty CallSid");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(summary))
+            {
+                return;
+            }
+
+            var groupName = GetCallGroup(callSid);
+
+            await _hubContext.Clients
+                .Group(groupName)
+                .SendAsync("SummaryUpdate", new
+                {
+                    CallSid = callSid,
+                    Summary = summary,
+                    KeyFindings = keyFindings ?? Array.Empty<string>(),
+                    Timestamp = DateTime.UtcNow
+                }, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Error broadcasting summary: CallSid={CallSid}",
+                callSid);
+        }
+    }
+
     private static string GetCallGroup(string callSid)
     {
         return $"call_{callSid}";

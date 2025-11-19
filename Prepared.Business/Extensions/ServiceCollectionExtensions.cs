@@ -18,9 +18,12 @@ public static class ServiceCollectionExtensions
         // because it depends on SignalR infrastructure (IHubContext)
         
         services.Configure<WhisperOptions>(configuration.GetSection(WhisperOptions.SectionName));
+        services.Configure<OpenAiOptions>(configuration.GetSection(OpenAiOptions.SectionName));
 
         // Register HTTP clients/services
         services.AddHttpClient<ITranscriptionService, WhisperTranscriptionService>();
+        services.AddHttpClient<ISummarizationService, OpenAiSummarizationService>();
+        services.AddHttpClient<ILocationExtractionService, OpenAiLocationExtractionService>();
 
         // Register Twilio services
         services.AddScoped<ITwilioService, TwilioService>();
