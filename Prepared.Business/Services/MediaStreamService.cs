@@ -10,15 +10,18 @@ public class MediaStreamService : IMediaStreamService
 {
     private readonly ILogger<MediaStreamService> _logger;
     private readonly ITranscriptHub _transcriptHub;
+    private readonly ITranscriptionService _transcriptionService;
     private readonly Dictionary<string, DateTime> _activeStreams = new();
     private readonly Dictionary<string, string> _streamToCallMapping = new(); // Maps StreamSid to CallSid
 
     public MediaStreamService(
         ILogger<MediaStreamService> logger,
-        ITranscriptHub transcriptHub)
+        ITranscriptHub transcriptHub,
+        ITranscriptionService transcriptionService)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _transcriptHub = transcriptHub ?? throw new ArgumentNullException(nameof(transcriptHub));
+        _transcriptionService = transcriptionService ?? throw new ArgumentNullException(nameof(transcriptionService));
     }
 
     public async Task HandleStreamStartAsync(string streamSid, string callSid, CancellationToken cancellationToken = default)
@@ -79,14 +82,28 @@ public class MediaStreamService : IMediaStreamService
                     "Processing media data: StreamSid={StreamSid}, PayloadSize={Size} bytes",
                     streamSid, audioBytes.Length);
 
-                // Here you would typically:
-                // 1. Send audio to transcription service (Twilio Media Streams, Azure Speech, etc.)
-                // 2. Process the audio in real-time
-                // 3. Update transcript as it comes in
-                // 4. Broadcast transcript updates via SignalR
+                if (_streamToCallMapping.TryGetValue(streamSid, out var callSid))
+                {
+                    var transcriptionResult = await _transcriptionService.TranscribeAsync(
+                        callSid,
+                        streamSid,
+                        audioBytes,
+                        isFinal: false,
+                        cancellationToken);
 
-                // For now, we'll just log that we received the data
-                // The actual transcription will be implemented in the next phase
+                    if (transcriptionResult?.Text is { Length: > 0 })
+                    {
+                        await _transcriptHub.BroadcastTranscriptUpdateAsync(
+                            callSid,
+                            transcriptionResult.Text,
+                            transcriptionResult.IsFinal,
+                            cancellationToken);
+                    }
+                }
+                else
+                {
+                    _logger.LogDebug("No call mapping found for StreamSid={StreamSid}", streamSid);
+                }
             }
 
             await Task.CompletedTask;

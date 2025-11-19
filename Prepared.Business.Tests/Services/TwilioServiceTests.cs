@@ -117,7 +117,9 @@ public class TwilioServiceTests
             x => x.Log(
                 LogLevel.Information,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains(callSid) && v.ToString()!.Contains(status)),
+                It.Is<It.IsAnyType>((v, t) =>
+                    v.ToString()!.Contains(callSid) &&
+                    v.ToString()!.Contains(status)),
                 It.IsAny<Exception>(),
                 It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)),
             Times.AtLeastOnce);
@@ -147,7 +149,9 @@ public class TwilioServiceTests
             x => x.Log(
                 LogLevel.Information,
                 It.IsAny<EventId>(),
-                It.IsAny<It.IsAnyType>(),
+                It.Is<It.IsAnyType>((v, t) =>
+                    v.ToString()!.Contains(callSid) &&
+                    v.ToString()!.Contains(status)),
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.AtLeastOnce);
@@ -253,6 +257,7 @@ public class TwilioServiceTests
     {
         // Arrange
         var callSid = "CA123456789";
+        var expectedStatusName = expectedStatus.ToString();
 
         // Act
         await _service.HandleCallStatusUpdateAsync(callSid, twilioStatus);
@@ -262,7 +267,9 @@ public class TwilioServiceTests
             x => x.Log(
                 LogLevel.Information,
                 It.IsAny<EventId>(),
-                It.IsAny<It.IsAnyType>(),
+                It.Is<It.IsAnyType>((v, t) =>
+                    v.ToString()!.Contains(callSid) &&
+                    v.ToString()!.Contains(expectedStatusName)),
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.AtLeastOnce);
