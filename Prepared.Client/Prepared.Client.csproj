@@ -14,6 +14,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Prepared.ServiceDefaults\Prepared.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\Prepared.Business\Prepared.Business.csproj" />
+    <ProjectReference Include="..\Prepared.Common\Prepared.Common.csproj" />
   </ItemGroup>
 
 </Project>
