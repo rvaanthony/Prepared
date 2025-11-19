@@ -4,6 +4,7 @@ using Prepared.Business.Interfaces;
 using Prepared.Common.Enums;
 using Prepared.Common.Models;
 using Prepared.Data.Interfaces;
+using Twilio;
 using Twilio.Security;
 using Twilio.TwiML;
 using Twilio.TwiML.Voice;
@@ -38,8 +39,17 @@ public class TwilioService : ITwilioService
         _webhookUrl = _configuration["Twilio:WebhookUrl"] 
             ?? throw new InvalidOperationException("Twilio:WebhookUrl configuration is required");
         
-        _authToken = _configuration["Twilio:AuthToken"] 
-            ?? throw new InvalidOperationException("Twilio:AuthToken configuration is required");
+        // Initialize TwilioClient with API keys
+        var keySid = _configuration["Twilio:KeySid"] 
+            ?? throw new InvalidOperationException("Twilio:KeySid configuration is required");
+        var keySecret = _configuration["Twilio:SecretKey"] 
+            ?? throw new InvalidOperationException("Twilio:SecretKey configuration is required");
+        var accountSid = _configuration["Twilio:AccountSid"] 
+            ?? throw new InvalidOperationException("Twilio:AccountSid configuration is required");
+        
+        TwilioClient.Init(username: keySid, password: keySecret, accountSid: accountSid);
+        _authToken = keySecret; // Use secret for webhook validation
+        _logger.LogInformation("TwilioClient initialized with API Key authentication");
     }
 
     public async Task<string> HandleIncomingCallAsync(CallInfo callInfo, CancellationToken cancellationToken = default)

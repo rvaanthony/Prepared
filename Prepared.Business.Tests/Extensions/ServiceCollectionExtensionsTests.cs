@@ -27,8 +27,9 @@ public class ServiceCollectionExtensionsTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                { "Twilio:AccountSid", "test_account_sid" },
-                { "Twilio:AuthToken", "test_auth_token" },
+                { "Twilio:AccountSid", "AC123456789" },
+                { "Twilio:KeySid", "SK123456789" },
+                { "Twilio:SecretKey", "test_secret_key" },
                 { "Twilio:WebhookUrl", "https://example.com" },
                 { "Whisper:ApiKey", "test_whisper_key" },
                 { "Whisper:Model", "whisper-1" },
@@ -84,8 +85,9 @@ public class ServiceCollectionExtensionsTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                { "Twilio:AccountSid", "test_account_sid" },
-                { "Twilio:AuthToken", "test_auth_token" },
+                { "Twilio:AccountSid", "AC123456789" },
+                { "Twilio:KeySid", "SK123456789" },
+                { "Twilio:SecretKey", "test_secret_key" },
                 { "Twilio:WebhookUrl", "https://example.com" },
                 { "Whisper:ApiKey", "test_whisper_key" },
                 { "Whisper:Model", "whisper-1" },
@@ -155,8 +157,9 @@ public class ServiceCollectionExtensionsTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                { "Twilio:AccountSid", "test_account_sid" },
-                { "Twilio:AuthToken", "test_auth_token" },
+                { "Twilio:AccountSid", "AC123456789" },
+                { "Twilio:KeySid", "SK123456789" },
+                { "Twilio:SecretKey", "test_secret_key" },
                 { "Twilio:WebhookUrl", "https://example.com" },
                 { "Whisper:ApiKey", "test_whisper_key" },
                 { "Whisper:Model", "whisper-1" },
