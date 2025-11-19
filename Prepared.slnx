@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Prepared.AppHost/Prepared.AppHost.csproj" />
+  <Project Path="Prepared.Client/Prepared.Client.csproj" />
+  <Project Path="Prepared.ServiceDefaults/Prepared.ServiceDefaults.csproj" />
+</Solution>
