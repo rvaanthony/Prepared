@@ -1,8 +1,12 @@
 <Solution>
   <Project Path="Prepared.AppHost/Prepared.AppHost.csproj" />
+  <Project Path="Prepared.Business.Tests/Prepared.Business.Tests.csproj" />
   <Project Path="Prepared.Business/Prepared.Business.csproj" />
+  <Project Path="Prepared.Client.Tests/Prepared.Client.Tests.csproj" />
   <Project Path="Prepared.Client/Prepared.Client.csproj" />
+  <Project Path="Prepared.Common.Tests/Prepared.Common.Tests.csproj" />
   <Project Path="Prepared.Common/Prepared.Common.csproj" />
+  <Project Path="Prepared.Data.Tests/Prepared.Data.Tests.csproj" />
   <Project Path="Prepared.Data/Prepared.Data.csproj" />
   <Project Path="Prepared.ServiceDefaults/Prepared.ServiceDefaults.csproj" />
 </Solution>
