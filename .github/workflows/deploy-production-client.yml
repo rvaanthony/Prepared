@@ -15,6 +15,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Set up Node.js for Webpack
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      # Install Webpack dependencies
+      - name: Install npm dependencies
+        run: npm install
+        working-directory: Prepared.Client
+
+      # Run Webpack to generate `wwwroot/dist/`
+      - name: Build frontend assets with Webpack
+        run: npm run build # Ensures `wwwroot/dist/` is created
+        working-directory: Prepared.Client
+
       - name: Set up .NET Core
         uses: actions/setup-dotnet@v4
         with:
@@ -61,3 +77,4 @@ jobs:
           package: .
 
           
+
