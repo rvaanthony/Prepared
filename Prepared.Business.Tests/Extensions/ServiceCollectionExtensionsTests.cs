@@ -7,6 +7,8 @@ using Moq;
 using Prepared.Business.Extensions;
 using Prepared.Business.Interfaces;
 using Prepared.Business.Services;
+using Prepared.Data.Extensions;
+using Prepared.Data.Interfaces;
 using Xunit;
 
 namespace Prepared.Business.Tests.Extensions;
@@ -41,6 +43,14 @@ public class ServiceCollectionExtensionsTests
         services.AddSingleton<IConfiguration>(configuration); // Register IConfiguration
         var environment = new Mock<IHostEnvironment>();
         environment.Setup(e => e.EnvironmentName).Returns("Development");
+
+        // Register data services (repositories) required by business services
+        var mockTableStorage = new Mock<ITableStorageService>();
+        services.AddSingleton<ITableStorageService>(_ => mockTableStorage.Object);
+        services.AddScoped<ICallRepository, Prepared.Data.Repositories.CallRepository>();
+        services.AddScoped<ITranscriptRepository, Prepared.Data.Repositories.TranscriptRepository>();
+        services.AddScoped<ISummaryRepository, Prepared.Data.Repositories.SummaryRepository>();
+        services.AddScoped<ILocationRepository, Prepared.Data.Repositories.LocationRepository>();
 
         // Act
         services.AddBusinessServices(configuration, environment.Object);
@@ -90,6 +100,14 @@ public class ServiceCollectionExtensionsTests
         services.AddSingleton<IConfiguration>(configuration); // Register IConfiguration
         var environment = new Mock<IHostEnvironment>();
         environment.Setup(e => e.EnvironmentName).Returns("Development");
+
+        // Register data services (repositories) required by business services
+        var mockTableStorage = new Mock<ITableStorageService>();
+        services.AddSingleton<ITableStorageService>(_ => mockTableStorage.Object);
+        services.AddScoped<ICallRepository, Prepared.Data.Repositories.CallRepository>();
+        services.AddScoped<ITranscriptRepository, Prepared.Data.Repositories.TranscriptRepository>();
+        services.AddScoped<ISummaryRepository, Prepared.Data.Repositories.SummaryRepository>();
+        services.AddScoped<ILocationRepository, Prepared.Data.Repositories.LocationRepository>();
 
         // Act
         services.AddBusinessServices(configuration, environment.Object);
@@ -153,6 +171,14 @@ public class ServiceCollectionExtensionsTests
         services.AddSingleton<IConfiguration>(configuration); // Register IConfiguration
         var environment = new Mock<IHostEnvironment>();
         environment.Setup(e => e.EnvironmentName).Returns("Development");
+
+        // Register data services (repositories) required by business services
+        var mockTableStorage = new Mock<ITableStorageService>();
+        services.AddSingleton<ITableStorageService>(_ => mockTableStorage.Object);
+        services.AddScoped<ICallRepository, Prepared.Data.Repositories.CallRepository>();
+        services.AddScoped<ITranscriptRepository, Prepared.Data.Repositories.TranscriptRepository>();
+        services.AddScoped<ISummaryRepository, Prepared.Data.Repositories.SummaryRepository>();
+        services.AddScoped<ILocationRepository, Prepared.Data.Repositories.LocationRepository>();
 
         // Act
         services.AddBusinessServices(configuration, environment.Object);

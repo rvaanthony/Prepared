@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Prepared.Data.Interfaces;
+using Prepared.Data.Repositories;
 using Prepared.Data.Services;
 
 namespace Prepared.Data.Extensions;
@@ -16,6 +17,12 @@ public static class ServiceCollectionExtensions
 
         // Register Azure Table Storage services.
         services.AddAzureTableService();
+
+        // Register repositories (scoped for per-request lifetime)
+        services.AddScoped<ICallRepository, CallRepository>();
+        services.AddScoped<ITranscriptRepository, TranscriptRepository>();
+        services.AddScoped<ISummaryRepository, SummaryRepository>();
+        services.AddScoped<ILocationRepository, LocationRepository>();
 
         return services;
     }

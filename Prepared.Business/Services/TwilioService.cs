@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Prepared.Business.Interfaces;
 using Prepared.Common.Enums;
 using Prepared.Common.Models;
+using Prepared.Data.Interfaces;
 using Twilio.Security;
 using Twilio.TwiML;
 using Twilio.TwiML.Voice;
@@ -19,17 +20,20 @@ public class TwilioService : ITwilioService
     private readonly ILogger<TwilioService> _logger;
     private readonly IConfiguration _configuration;
     private readonly ITranscriptHub _transcriptHub;
+    private readonly ICallRepository _callRepository;
     private readonly string _webhookUrl;
     private readonly string _authToken;
 
     public TwilioService(
         ILogger<TwilioService> logger,
         IConfiguration configuration,
-        ITranscriptHub transcriptHub)
+        ITranscriptHub transcriptHub,
+        ICallRepository callRepository)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _transcriptHub = transcriptHub ?? throw new ArgumentNullException(nameof(transcriptHub));
+        _callRepository = callRepository ?? throw new ArgumentNullException(nameof(callRepository));
         
         _webhookUrl = _configuration["Twilio:WebhookUrl"] 
             ?? throw new InvalidOperationException("Twilio:WebhookUrl configuration is required");
@@ -45,6 +49,17 @@ public class TwilioService : ITwilioService
             _logger.LogInformation(
                 "Processing incoming call: CallSid={CallSid}, From={From}, To={To}",
                 callInfo.CallSid, callInfo.From, callInfo.To);
+
+            // Save call record to Azure Tables
+            try
+            {
+                await _callRepository.UpsertAsync(callInfo, cancellationToken);
+                _logger.LogDebug("Saved call record to storage: CallSid={CallSid}", callInfo.CallSid);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to save call record, continuing with call processing: CallSid={CallSid}", callInfo.CallSid);
+            }
 
             var response = new VoiceResponse();
 
@@ -107,15 +122,22 @@ public class TwilioService : ITwilioService
             // Map Twilio status to our enum
             var callStatus = MapTwilioStatusToCallStatus(status);
             
+            // Update call status in storage
+            try
+            {
+                await _callRepository.UpdateStatusAsync(callSid, status, cancellationToken);
+                _logger.LogDebug("Updated call status in storage: CallSid={CallSid}, Status={Status}", callSid, status);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to update call status in storage: CallSid={CallSid}, Status={Status}", callSid, status);
+            }
+
             // Notify connected clients via SignalR
             await _transcriptHub.BroadcastCallStatusUpdateAsync(
                 callSid,
                 status,
                 cancellationToken);
-            
-            // Here you would typically:
-            // 1. Update the call record in the database
-            // 2. Trigger any cleanup or post-processing
             
             _logger.LogInformation(
                 "Processed call status update: CallSid={CallSid}, Status={Status}",
