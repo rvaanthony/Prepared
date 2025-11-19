@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Prepared.Business.Interfaces;
+using Prepared.Business.Services;
 
 namespace Prepared.Business.Extensions;
 
@@ -11,9 +13,14 @@ public static class ServiceCollectionExtensions
         IConfiguration configuration,
         IHostEnvironment environment)
     {
-        // Register business services here
+        // Register Twilio services
+        services.AddScoped<ITwilioService, TwilioService>();
+        services.AddScoped<IMediaStreamService, MediaStreamService>();
+
+        // Additional business services will be registered here as they are implemented
         // Example:
-        // services.AddScoped<ISomeService, SomeService>();
+        // services.AddScoped<ITranscriptionService, TranscriptionService>();
+        // services.AddScoped<ILocationExtractionService, LocationExtractionService>();
 
         return services;
     }
