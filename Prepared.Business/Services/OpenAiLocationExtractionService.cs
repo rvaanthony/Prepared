@@ -45,6 +45,8 @@ public class OpenAiLocationExtractionService : ILocationExtractionService
             {
                 model = _options.LocationModel ?? _options.DefaultModel,
                 temperature = 0.1,
+                reasoning_effort = "medium", // GPT-5: Use medium reasoning for accurate location extraction
+                verbosity = "low", // GPT-5: Keep responses concise for JSON output
                 response_format = new { type = "json_object" },
                 messages = new[]
                 {

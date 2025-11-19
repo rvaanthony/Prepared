@@ -46,6 +46,8 @@ public class OpenAiSummarizationService : ISummarizationService
             {
                 model = _options.SummarizationModel ?? _options.DefaultModel,
                 temperature = 0.2,
+                reasoning_effort = "minimal", // GPT-5: Use minimal reasoning for faster summarization
+                verbosity = "medium", // GPT-5: Control response length
                 messages = new[]
                 {
                     new { role = "system", content = "You are a senior incident dispatcher assistant. Summarize emergency call transcripts with clear bullet points." },
