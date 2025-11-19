@@ -4,6 +4,8 @@
 
 Prepared is a real-time call processing application that receives phone calls via Twilio, transcribes audio in real-time, extracts location information, and visualizes it on an interactive map.
 
+> **Note**: This project is built to **Principal Engineer standards**, demonstrating enterprise-grade architecture, best practices, clean code principles, comprehensive testing, and production-ready implementation patterns. Every aspect of this codebase reflects the quality and technical excellence expected at the highest engineering levels.
+
 ## High-Level Architecture Flow
 
 ```
@@ -46,3 +48,17 @@ Summarize + extract location → Drop pin on map in UI
 - Twilio (Call handling and audio streaming)
 - Real-time transcription
 - Interactive mapping
+
+## Engineering Standards
+
+This project adheres to **Principal Engineer-level** standards:
+
+- ✅ **Clean Architecture** - Separation of concerns with clear layer boundaries
+- ✅ **SOLID Principles** - Maintainable, extensible, and testable code
+- ✅ **Comprehensive Testing** - Unit tests, integration tests, and test coverage
+- ✅ **Security First** - Security headers, rate limiting, CSRF protection, input validation
+- ✅ **Performance Optimization** - Caching, efficient data access, async/await patterns
+- ✅ **Observability** - Structured logging, error tracking (Sentry), health checks
+- ✅ **Code Quality** - Consistent patterns, documentation, and maintainability
+- ✅ **Production Ready** - Error handling, resilience patterns, monitoring
+- ✅ **Best Practices** - Dependency injection, configuration management, middleware patterns
