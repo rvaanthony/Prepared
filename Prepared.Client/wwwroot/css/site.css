@@ -27,5 +27,58 @@ body {
 }
 
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
-  text-align: start;
+    text-align: start;
+}
+
+/* Dashboard-specific styles */
+body {
+    background-color: #f8f9fa;
+}
+
+/* Enhanced dashboard header */
+.dashboard-header {
+    backdrop-filter: blur(10px);
+    background-color: rgba(255, 255, 255, 0.98) !important;
+    border-bottom: 2px solid #e9ecef !important;
+}
+
+.dashboard-header h2 {
+    font-size: 2rem;
+    letter-spacing: -0.5px;
+}
+
+.dashboard-header .connection-badge {
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    min-width: 120px;
+    text-align: center;
+}
+
+.dashboard-header .connection-badge.bg-success {
+    background-color: #198754 !important;
+}
+
+.dashboard-header .connection-badge.bg-danger {
+    background-color: #dc3545 !important;
+}
+
+.dashboard-header .connection-badge.bg-warning {
+    background-color: #ffc107 !important;
+    color: #000 !important;
+}
+
+@media (max-width: 768px) {
+    .dashboard-header h2 {
+        font-size: 1.5rem;
+    }
+    
+    .dashboard-header .text-muted {
+        display: none;
+    }
+    
+    .dashboard-header .connection-badge {
+        font-size: 0.875rem !important;
+        padding: 0.375rem 0.75rem !important;
+        min-width: 100px;
+    }
 }

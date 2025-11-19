@@ -25,7 +25,9 @@ public class ErrorHandlerMiddlewareTests
             return Task.CompletedTask;
         };
 
-        var middleware = new ErrorHandlerMiddleware(next, loggerMock.Object);
+        var environmentMock = new Mock<IWebHostEnvironment>();
+        environmentMock.Setup(x => x.EnvironmentName).Returns("Production");
+        var middleware = new ErrorHandlerMiddleware(next, loggerMock.Object, environmentMock.Object);
 
         // Act
         await middleware.InvokeAsync(context);
@@ -50,7 +52,9 @@ public class ErrorHandlerMiddlewareTests
             throw exception;
         };
 
-        var middleware = new ErrorHandlerMiddleware(next, loggerMock.Object);
+        var environmentMock = new Mock<IWebHostEnvironment>();
+        environmentMock.Setup(x => x.EnvironmentName).Returns("Production");
+        var middleware = new ErrorHandlerMiddleware(next, loggerMock.Object, environmentMock.Object);
 
         // Act
         await middleware.InvokeAsync(context);
@@ -91,7 +95,9 @@ public class ErrorHandlerMiddlewareTests
             throw new Exception("Test exception");
         };
 
-        var middleware = new ErrorHandlerMiddleware(next, loggerMock.Object);
+        var environmentMock = new Mock<IWebHostEnvironment>();
+        environmentMock.Setup(x => x.EnvironmentName).Returns("Production");
+        var middleware = new ErrorHandlerMiddleware(next, loggerMock.Object, environmentMock.Object);
 
         // Act
         await middleware.InvokeAsync(context);

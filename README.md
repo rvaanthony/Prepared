@@ -51,8 +51,12 @@ Summarize + extract location → Drop pin on map in UI
 - ASP.NET Core MVC
 - xUnit (Testing)
 - Twilio (Call handling and audio streaming)
-- Real-time transcription
-- Interactive mapping
+- SignalR (Real-time updates)
+- OpenAI Whisper (Real-time transcription)
+- OpenAI GPT (Summarization and location extraction)
+- Google Maps API (Interactive mapping)
+- Webpack 5 (Frontend bundling)
+- npm (Package management)
 
 ## Engineering Standards
 
@@ -74,6 +78,31 @@ This project includes comprehensive code coverage reporting to ensure quality an
 
 ### Quick Start
 
+**1. Install Frontend Dependencies:**
+```bash
+cd Prepared.Client
+npm install
+```
+
+**2. Build Frontend Assets:**
+```bash
+# Development (watch mode)
+npm run dev
+
+# Production build
+npm run build
+```
+
+**3. Configure API Keys:**
+- Set `GoogleMaps:ApiKey` in `appsettings.Development.json` or user secrets
+- Set `Whisper:ApiKey` and `OpenAI:ApiKey` in user secrets
+- Set `Twilio:AuthToken` and `Twilio:WebhookUrl` in user secrets
+
+**4. Run the Application:**
+- Navigate to `/Calls` to view the real-time call monitoring dashboard
+
+**Code Coverage:**
+
 **Visual Studio 2026:**
 - Right-click solution → **"Analyze Code Coverage for All Tests"**
 - Or: **Test** → **Analyze Code Coverage** → **All Tests**
@@ -85,3 +114,6 @@ This project includes comprehensive code coverage reporting to ensure quality an
 ```
 
 See [docs/COVERAGE.md](docs/COVERAGE.md) for detailed instructions and troubleshooting.
+
+**Frontend Development:**
+See [Prepared.Client/README.md](Prepared.Client/README.md) for webpack setup and development workflow.

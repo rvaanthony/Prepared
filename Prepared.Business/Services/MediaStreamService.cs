@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Prepared.Business.Interfaces;
+using Prepared.Data.Interfaces;
 
 namespace Prepared.Business.Services;
 
@@ -9,11 +10,39 @@ namespace Prepared.Business.Services;
 public class MediaStreamService : IMediaStreamService
 {
     private readonly ILogger<MediaStreamService> _logger;
+    private readonly ITranscriptHub _transcriptHub;
+    private readonly ITranscriptionService _transcriptionService;
+    private readonly ISummarizationService _summarizationService;
+    private readonly ILocationExtractionService _locationExtractionService;
+    private readonly ICallRepository _callRepository;
+    private readonly ITranscriptRepository _transcriptRepository;
+    private readonly ISummaryRepository _summaryRepository;
+    private readonly ILocationRepository _locationRepository;
     private readonly Dictionary<string, DateTime> _activeStreams = new();
+    private readonly Dictionary<string, string> _streamToCallMapping = new(); // Maps StreamSid to CallSid
+    private readonly Dictionary<string, List<string>> _transcriptBuffers = new(); // CallSid => transcript segments
+    private readonly Dictionary<string, int> _transcriptSequenceNumbers = new(); // CallSid => sequence number
 
-    public MediaStreamService(ILogger<MediaStreamService> logger)
+    public MediaStreamService(
+        ILogger<MediaStreamService> logger,
+        ITranscriptHub transcriptHub,
+        ITranscriptionService transcriptionService,
+        ISummarizationService summarizationService,
+        ILocationExtractionService locationExtractionService,
+        ICallRepository callRepository,
+        ITranscriptRepository transcriptRepository,
+        ISummaryRepository summaryRepository,
+        ILocationRepository locationRepository)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _transcriptHub = transcriptHub ?? throw new ArgumentNullException(nameof(transcriptHub));
+        _transcriptionService = transcriptionService ?? throw new ArgumentNullException(nameof(transcriptionService));
+        _summarizationService = summarizationService ?? throw new ArgumentNullException(nameof(summarizationService));
+        _locationExtractionService = locationExtractionService ?? throw new ArgumentNullException(nameof(locationExtractionService));
+        _callRepository = callRepository ?? throw new ArgumentNullException(nameof(callRepository));
+        _transcriptRepository = transcriptRepository ?? throw new ArgumentNullException(nameof(transcriptRepository));
+        _summaryRepository = summaryRepository ?? throw new ArgumentNullException(nameof(summaryRepository));
+        _locationRepository = locationRepository ?? throw new ArgumentNullException(nameof(locationRepository));
     }
 
     public async Task HandleStreamStartAsync(string streamSid, string callSid, CancellationToken cancellationToken = default)
@@ -25,14 +54,27 @@ public class MediaStreamService : IMediaStreamService
                 streamSid, callSid);
 
             _activeStreams[streamSid] = DateTime.UtcNow;
+            _streamToCallMapping[streamSid] = callSid;
 
-            // Here you would typically:
-            // 1. Create a stream record in the database
-            // 2. Initialize transcription service
-            // 3. Notify connected clients via SignalR
-            // 4. Set up any real-time processing pipelines
+            // Update call record with stream information
+            try
+            {
+                await _callRepository.UpdateStreamInfoAsync(callSid, streamSid, hasActiveStream: true, cancellationToken);
+                _logger.LogDebug("Updated call stream info: CallSid={CallSid}, StreamSid={StreamSid}", callSid, streamSid);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to update call stream info: CallSid={CallSid}, StreamSid={StreamSid}", callSid, streamSid);
+            }
 
-            await Task.CompletedTask;
+            // Initialize sequence number for this call
+            _transcriptSequenceNumbers[callSid] = 0;
+
+            // Notify connected clients that the stream has started
+            await _transcriptHub.BroadcastCallStatusUpdateAsync(
+                callSid,
+                "stream_started",
+                cancellationToken);
         }
         catch (Exception ex)
         {
@@ -68,14 +110,44 @@ public class MediaStreamService : IMediaStreamService
                     "Processing media data: StreamSid={StreamSid}, PayloadSize={Size} bytes",
                     streamSid, audioBytes.Length);
 
-                // Here you would typically:
-                // 1. Send audio to transcription service (Twilio Media Streams, Azure Speech, etc.)
-                // 2. Process the audio in real-time
-                // 3. Update transcript as it comes in
-                // 4. Broadcast transcript updates via SignalR
+                if (_streamToCallMapping.TryGetValue(streamSid, out var callSid))
+                {
+                    var transcriptionResult = await _transcriptionService.TranscribeAsync(
+                        callSid,
+                        streamSid,
+                        audioBytes,
+                        isFinal: false,
+                        cancellationToken);
 
-                // For now, we'll just log that we received the data
-                // The actual transcription will be implemented in the next phase
+                    if (transcriptionResult?.Text is { Length: > 0 } text)
+                    {
+                        AppendTranscript(callSid, text);
+
+                        // Save transcript chunk to storage
+                        try
+                        {
+                            var sequenceNumber = _transcriptSequenceNumbers.GetValueOrDefault(callSid, 0);
+                            await _transcriptRepository.SaveAsync(transcriptionResult, sequenceNumber, cancellationToken);
+                            _transcriptSequenceNumbers[callSid] = sequenceNumber + 1;
+                            _logger.LogDebug("Saved transcript chunk: CallSid={CallSid}, IsFinal={IsFinal}, Sequence={Sequence}",
+                                callSid, transcriptionResult.IsFinal, sequenceNumber);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to save transcript chunk: CallSid={CallSid}", callSid);
+                        }
+
+                        await _transcriptHub.BroadcastTranscriptUpdateAsync(
+                            callSid,
+                            text,
+                            transcriptionResult.IsFinal,
+                            cancellationToken);
+                    }
+                }
+                else
+                {
+                    _logger.LogDebug("No call mapping found for StreamSid={StreamSid}", streamSid);
+                }
             }
 
             await Task.CompletedTask;
@@ -107,14 +179,27 @@ public class MediaStreamService : IMediaStreamService
                 _activeStreams.Remove(streamSid);
             }
 
-            // Here you would typically:
-            // 1. Finalize the transcript
-            // 2. Update the stream record in the database
-            // 3. Trigger location extraction from final transcript
-            // 4. Notify clients that the stream has ended
-            // 5. Clean up any resources
+            // Notify connected clients that the stream has ended
+            await _transcriptHub.BroadcastCallStatusUpdateAsync(
+                callSid,
+                "stream_stopped",
+                cancellationToken);
 
-            await Task.CompletedTask;
+            // Update call record to remove stream information
+            try
+            {
+                await _callRepository.UpdateStreamInfoAsync(callSid, streamSid: null, hasActiveStream: false, cancellationToken);
+                _logger.LogDebug("Updated call stream info (stopped): CallSid={CallSid}", callSid);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to update call stream info: CallSid={CallSid}", callSid);
+            }
+
+            // Clean up mappings
+            _streamToCallMapping.Remove(streamSid);
+            _transcriptSequenceNumbers.Remove(callSid);
+            await GenerateInsightsAsync(callSid, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -122,6 +207,81 @@ public class MediaStreamService : IMediaStreamService
                 "Error handling stream stop: StreamSid={StreamSid}, CallSid={CallSid}",
                 streamSid, callSid);
             throw;
+        }
+    }
+
+    private void AppendTranscript(string callSid, string text)
+    {
+        if (!_transcriptBuffers.TryGetValue(callSid, out var segments))
+        {
+            segments = new List<string>();
+            _transcriptBuffers[callSid] = segments;
+        }
+
+        segments.Add(text);
+    }
+
+    private async Task GenerateInsightsAsync(string callSid, CancellationToken cancellationToken)
+    {
+        if (!_transcriptBuffers.TryGetValue(callSid, out var segments) || segments.Count == 0)
+        {
+            return;
+        }
+
+        var transcriptText = string.Join(" ", segments);
+        _transcriptBuffers.Remove(callSid);
+
+        try
+        {
+            var summaryTask = _summarizationService.SummarizeAsync(callSid, transcriptText, cancellationToken);
+            var locationTask = _locationExtractionService.ExtractAsync(callSid, transcriptText, cancellationToken);
+
+            var summary = await summaryTask;
+            if (summary != null)
+            {
+                // Save summary to storage
+                try
+                {
+                    await _summaryRepository.UpsertAsync(summary, cancellationToken);
+                    _logger.LogDebug("Saved summary: CallSid={CallSid}", callSid);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to save summary: CallSid={CallSid}", callSid);
+                }
+
+                await _transcriptHub.BroadcastSummaryUpdateAsync(
+                    callSid,
+                    summary.Summary,
+                    summary.KeyFindings,
+                    cancellationToken);
+            }
+
+            var location = await locationTask;
+            if (location?.Latitude is double lat && location.Longitude is double lng)
+            {
+                // Save location to storage
+                try
+                {
+                    await _locationRepository.UpsertAsync(location, cancellationToken);
+                    _logger.LogDebug("Saved location: CallSid={CallSid}, Lat={Latitude}, Lng={Longitude}", callSid, lat, lng);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to save location: CallSid={CallSid}", callSid);
+                }
+
+                await _transcriptHub.BroadcastLocationUpdateAsync(
+                    callSid,
+                    lat,
+                    lng,
+                    location.FormattedAddress,
+                    cancellationToken);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating insights for CallSid={CallSid}", callSid);
         }
     }
 }
