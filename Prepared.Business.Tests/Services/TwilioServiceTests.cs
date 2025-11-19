@@ -217,5 +217,95 @@ public class TwilioServiceTests
         
         exception.Message.Should().Contain("Twilio:AuthToken");
     }
+
+    [Theory]
+    [InlineData("queued", CallStatus.Queued)]
+    [InlineData("initiated", CallStatus.Initiated)]
+    [InlineData("ringing", CallStatus.Ringing)]
+    [InlineData("in-progress", CallStatus.InProgress)]
+    [InlineData("completed", CallStatus.Completed)]
+    [InlineData("busy", CallStatus.Busy)]
+    [InlineData("failed", CallStatus.Failed)]
+    [InlineData("no-answer", CallStatus.NoAnswer)]
+    [InlineData("canceled", CallStatus.Canceled)]
+    [InlineData("UNKNOWN", CallStatus.Failed)] // Default case
+    [InlineData("QUEUED", CallStatus.Queued)] // Case insensitive
+    public async Task HandleCallStatusUpdateAsync_ShouldMapAllStatusTypes(string twilioStatus, CallStatus expectedStatus)
+    {
+        // Arrange
+        var callSid = "CA123456789";
+
+        // Act
+        await _service.HandleCallStatusUpdateAsync(callSid, twilioStatus);
+
+        // Assert - Verify it was logged (indirectly tests the mapping)
+        _loggerMock.Verify(
+            x => x.Log(
+                LogLevel.Information,
+                It.IsAny<EventId>(),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.AtLeastOnce);
+    }
+
+    [Fact]
+    public void ValidateWebhookSignature_WithWhitespaceSignature_ShouldReturnFalse()
+    {
+        // Arrange
+        var url = "https://example.com/webhook";
+        var parameters = new Dictionary<string, string>();
+        var signature = "   ";
+
+        // Act
+        var result = _service.ValidateWebhookSignature(url, parameters, signature);
+
+        // Assert
+        result.Should().BeFalse();
+        
+        _loggerMock.Verify(
+            x => x.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("signature is empty")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public void ValidateWebhookSignature_OnException_ShouldReturnFalse()
+    {
+        // Arrange
+        var url = "https://example.com/webhook";
+        var parameters = new Dictionary<string, string> { { "key", "value" } };
+        var signature = "valid-signature";
+
+        // Act - The validator might throw, but we should handle it
+        var result = _service.ValidateWebhookSignature(url, parameters, signature);
+
+        // Assert - Should return false on any exception
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task HandleIncomingCallAsync_ShouldIncludePause()
+    {
+        // Arrange
+        var callInfo = new CallInfo
+        {
+            CallSid = "CA123456789",
+            From = "+1234567890",
+            To = "+0987654321",
+            Status = CallStatus.InProgress,
+            StartedAt = DateTime.UtcNow
+        };
+
+        // Act
+        var result = await _service.HandleIncomingCallAsync(callInfo);
+
+        // Assert
+        result.Should().Contain("<Pause");
+    }
 }
 

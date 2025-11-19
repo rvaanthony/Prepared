@@ -237,5 +237,81 @@ public class TwilioWebhookControllerTests
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
+
+    [Theory]
+    [InlineData("queued", "Queued")]
+    [InlineData("initiated", "Initiated")]
+    [InlineData("ringing", "Ringing")]
+    [InlineData("in-progress", "InProgress")]
+    [InlineData("completed", "Completed")]
+    [InlineData("busy", "Busy")]
+    [InlineData("failed", "Failed")]
+    [InlineData("no-answer", "NoAnswer")]
+    [InlineData("canceled", "Canceled")]
+    [InlineData("UNKNOWN_STATUS", "Failed")] // Default case
+    [InlineData("QUEUED", "Queued")] // Case insensitive
+    [InlineData("In-Progress", "InProgress")] // Mixed case
+    public async Task HandleIncomingCall_ShouldMapAllStatusTypes(string twilioStatus, string expectedStatus)
+    {
+        // Arrange
+        _controller.Request.Headers["X-Twilio-Signature"] = "valid-signature";
+        _controller.Request.Form = new FormCollection(new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>
+        {
+            { "CallSid", "CA123456789" },
+            { "From", "+1234567890" },
+            { "To", "+0987654321" },
+            { "Direction", "inbound" },
+            { "CallStatus", twilioStatus },
+            { "AccountSid", "AC123456789" }
+        });
+        _twilioServiceMock
+            .Setup(x => x.ValidateWebhookSignature(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), "valid-signature"))
+            .Returns(true);
+        _twilioServiceMock
+            .Setup(x => x.HandleIncomingCallAsync(It.IsAny<CallInfo>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response></Response>");
+
+        // Act
+        var result = await _controller.HandleIncomingCall();
+
+        // Assert
+        result.Should().BeOfType<ContentResult>();
+        _twilioServiceMock.Verify(
+            x => x.HandleIncomingCallAsync(
+                It.Is<CallInfo>(c => c.Status.ToString() == expectedStatus),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleCallStatus_WithInvalidSignature_ShouldReturnUnauthorized()
+    {
+        // Arrange
+        _controller.Request.Headers["X-Twilio-Signature"] = "invalid-signature";
+        _controller.Request.Path = "/api/twilio/call-status";
+        _controller.Request.Form = new FormCollection(new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>
+        {
+            { "CallSid", "CA123456789" },
+            { "CallStatus", "completed" }
+        });
+        _twilioServiceMock
+            .Setup(x => x.ValidateWebhookSignature(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), "invalid-signature"))
+            .Returns(false);
+
+        // Act
+        var result = await _controller.HandleCallStatus();
+
+        // Assert
+        result.Should().BeOfType<UnauthorizedResult>();
+        
+        _loggerMock.Verify(
+            x => x.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Invalid webhook signature")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
 }
 

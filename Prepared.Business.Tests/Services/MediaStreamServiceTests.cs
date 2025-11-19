@@ -211,5 +211,83 @@ public class MediaStreamServiceTests
         Assert.Throws<ArgumentNullException>(() =>
             new MediaStreamService(null!));
     }
+
+    [Fact]
+    public async Task ProcessMediaDataAsync_WithNonMediaEvent_ShouldNotProcess()
+    {
+        // Arrange
+        var streamSid = "MZ123456789";
+        await _service.HandleStreamStartAsync(streamSid, "CA123456789");
+        var mediaPayload = Convert.ToBase64String(new byte[] { 1, 2, 3 });
+        var eventType = "start"; // Not "media"
+
+        // Act
+        await _service.ProcessMediaDataAsync(streamSid, mediaPayload, eventType);
+
+        // Assert - Should not log debug message for non-media events
+        _loggerMock.Verify(
+            x => x.Log(
+                LogLevel.Debug,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Processing media data")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task ProcessMediaDataAsync_WithEmptyPayload_ShouldNotProcess()
+    {
+        // Arrange
+        var streamSid = "MZ123456789";
+        await _service.HandleStreamStartAsync(streamSid, "CA123456789");
+        var eventType = "media";
+
+        // Act
+        await _service.ProcessMediaDataAsync(streamSid, string.Empty, eventType);
+
+        // Assert - Should not process empty payload
+        _loggerMock.Verify(
+            x => x.Log(
+                LogLevel.Debug,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Processing media data")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleStreamStopAsync_WithUnknownStream_ShouldNotCalculateDuration()
+    {
+        // Arrange
+        var streamSid = "MZ_UNKNOWN";
+        var callSid = "CA123456789";
+
+        // Act
+        await _service.HandleStreamStopAsync(streamSid, callSid);
+
+        // Assert - Should log stop but not duration
+        _loggerMock.Verify(
+            x => x.Log(
+                LogLevel.Information,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => 
+                    v.ToString()!.Contains("stopped")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+        
+        // Should not log duration for unknown stream
+        _loggerMock.Verify(
+            x => x.Log(
+                LogLevel.Information,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => 
+                    v.ToString()!.Contains("Stream duration")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Never);
+    }
 }
 

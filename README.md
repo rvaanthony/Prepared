@@ -26,6 +26,7 @@ Summarize + extract location → Drop pin on map in UI
 
 ## Project Structure
 
+### Solution Projects
 - **Prepared.Client**: ASP.NET Core MVC web application (Frontend)
 - **Prepared.Business**: Business logic layer with services and interfaces (class lib)
 - **Prepared.Data**: Data access layer with repositories and entities (class lib)
@@ -33,12 +34,16 @@ Summarize + extract location → Drop pin on map in UI
 - **Prepared.ServiceDefaults**: Aspire service defaults
 - **Prepared.AppHost**: Aspire application host
 
-## Test Projects
-
+### Test Projects
 - **Prepared.Client.Tests**: Tests for the MVC web application
 - **Prepared.Business.Tests**: Tests for business logic layer
 - **Prepared.Data.Tests**: Tests for data access layer
 - **Prepared.Common.Tests**: Tests for shared components
+
+### Project Organization
+- **`scripts/`**: Build, test, and utility scripts
+- **`docs/`**: Additional documentation (coverage guides, architecture docs, etc.)
+- **`.runsettings`**: Test and coverage configuration
 
 ## Technology Stack
 
@@ -62,3 +67,21 @@ This project adheres to **Principal Engineer-level** standards:
 - ✅ **Code Quality** - Consistent patterns, documentation, and maintainability
 - ✅ **Production Ready** - Error handling, resilience patterns, monitoring
 - ✅ **Best Practices** - Dependency injection, configuration management, middleware patterns
+
+## Code Coverage
+
+This project includes comprehensive code coverage reporting to ensure quality and maintainability.
+
+### Quick Start
+
+**Visual Studio 2026:**
+- Right-click solution → **"Analyze Code Coverage for All Tests"**
+- Or: **Test** → **Analyze Code Coverage** → **All Tests**
+- View results in the **Code Coverage Results** window
+
+**Command Line:**
+```powershell
+.\scripts\test-coverage.ps1
+```
+
+See [docs/COVERAGE.md](docs/COVERAGE.md) for detailed instructions and troubleshooting.
