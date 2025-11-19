@@ -1,11 +1,26 @@
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Moq;
 using Prepared.Client.Middleware;
+using Prepared.Client.Options;
 
 namespace Prepared.Client.Tests.Middleware;
 
 public class EnhancedRateLimitingMiddlewareTests
 {
+    private static IOptions<RateLimitingOptions> CreateOptions(bool enabled = true, int maxRequests = 100, int timeWindowSeconds = 60)
+    {
+        var options = new RateLimitingOptions
+        {
+            Enabled = enabled,
+            MaxRequests = maxRequests,
+            TimeWindowSeconds = timeWindowSeconds
+        };
+        return Microsoft.Extensions.Options.Options.Create(options);
+    }
+
     [Fact]
     public async Task InvokeAsync_WithinRateLimit_ShouldCallNext()
     {
@@ -21,7 +36,8 @@ public class EnhancedRateLimitingMiddlewareTests
             return Task.CompletedTask;
         };
 
-        var middleware = new EnhancedRateLimitingMiddleware(next);
+        var loggerMock = new Mock<ILogger<EnhancedRateLimitingMiddleware>>();
+        var middleware = new EnhancedRateLimitingMiddleware(next, CreateOptions(), loggerMock.Object);
 
         // Act
         await middleware.InvokeAsync(context);
@@ -36,8 +52,8 @@ public class EnhancedRateLimitingMiddlewareTests
     {
         // Arrange - Use same middleware instance to maintain rate limit cache
         RequestDelegate next = (ctx) => Task.CompletedTask;
-
-        var middleware = new EnhancedRateLimitingMiddleware(next);
+        var loggerMock = new Mock<ILogger<EnhancedRateLimitingMiddleware>>();
+        var middleware = new EnhancedRateLimitingMiddleware(next, CreateOptions(maxRequests: 100), loggerMock.Object);
 
         // Act - Make 101 requests (exceeding the default limit of 100)
         for (int i = 0; i < 100; i++)
@@ -83,7 +99,8 @@ public class EnhancedRateLimitingMiddlewareTests
             return Task.CompletedTask;
         };
 
-        var middleware = new EnhancedRateLimitingMiddleware(next);
+        var loggerMock = new Mock<ILogger<EnhancedRateLimitingMiddleware>>();
+        var middleware = new EnhancedRateLimitingMiddleware(next, CreateOptions(), loggerMock.Object);
 
         // Act
         await middleware.InvokeAsync(context);

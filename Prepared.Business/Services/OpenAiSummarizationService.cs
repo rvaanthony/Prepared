@@ -9,6 +9,10 @@ using Prepared.Common.Models;
 
 namespace Prepared.Business.Services;
 
+/// <summary>
+/// OpenAI-powered summarization service that generates concise summaries from call transcripts.
+/// Uses GPT models to extract key points and create structured summaries.
+/// </summary>
 public class OpenAiSummarizationService : ISummarizationService
 {
     private readonly HttpClient _httpClient;

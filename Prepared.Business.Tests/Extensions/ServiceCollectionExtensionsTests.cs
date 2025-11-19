@@ -27,7 +27,15 @@ public class ServiceCollectionExtensionsTests
             {
                 { "Twilio:AccountSid", "test_account_sid" },
                 { "Twilio:AuthToken", "test_auth_token" },
-                { "Twilio:WebhookUrl", "https://example.com" }
+                { "Twilio:WebhookUrl", "https://example.com" },
+                { "Whisper:ApiKey", "test_whisper_key" },
+                { "Whisper:Model", "whisper-1" },
+                { "Whisper:Endpoint", "https://api.openai.com/v1/audio/transcriptions" },
+                { "Whisper:TimeoutSeconds", "60" },
+                { "OpenAI:ApiKey", "test_openai_key" },
+                { "OpenAI:Endpoint", "https://api.openai.com/v1/" },
+                { "OpenAI:DefaultModel", "gpt-4o-mini" },
+                { "OpenAI:TimeoutSeconds", "30" }
             })
             .Build();
         services.AddSingleton<IConfiguration>(configuration); // Register IConfiguration
@@ -53,14 +61,33 @@ public class ServiceCollectionExtensionsTests
         services.AddLogging(); // Add logging services required by TwilioService and MediaStreamService
         var mockTranscriptHub = new Mock<ITranscriptHub>();
         services.AddScoped<ITranscriptHub>(_ => mockTranscriptHub.Object); // Register ITranscriptHub
+        
+        var mockTranscriptionService = new Mock<ITranscriptionService>();
+        services.AddScoped<ITranscriptionService>(_ => mockTranscriptionService.Object);
+        
+        var mockSummarizationService = new Mock<ISummarizationService>();
+        services.AddScoped<ISummarizationService>(_ => mockSummarizationService.Object);
+        
+        var mockLocationExtractionService = new Mock<ILocationExtractionService>();
+        services.AddScoped<ILocationExtractionService>(_ => mockLocationExtractionService.Object);
+        
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 { "Twilio:AccountSid", "test_account_sid" },
                 { "Twilio:AuthToken", "test_auth_token" },
-                { "Twilio:WebhookUrl", "https://example.com" }
+                { "Twilio:WebhookUrl", "https://example.com" },
+                { "Whisper:ApiKey", "test_whisper_key" },
+                { "Whisper:Model", "whisper-1" },
+                { "Whisper:Endpoint", "https://api.openai.com/v1/audio/transcriptions" },
+                { "Whisper:TimeoutSeconds", "60" },
+                { "OpenAI:ApiKey", "test_openai_key" },
+                { "OpenAI:Endpoint", "https://api.openai.com/v1/" },
+                { "OpenAI:DefaultModel", "gpt-4o-mini" },
+                { "OpenAI:TimeoutSeconds", "30" }
             })
             .Build();
+        services.AddSingleton<IConfiguration>(configuration); // Register IConfiguration
         var environment = new Mock<IHostEnvironment>();
         environment.Setup(e => e.EnvironmentName).Returns("Development");
 
@@ -112,7 +139,15 @@ public class ServiceCollectionExtensionsTests
             {
                 { "Twilio:AccountSid", "test_account_sid" },
                 { "Twilio:AuthToken", "test_auth_token" },
-                { "Twilio:WebhookUrl", "https://example.com" }
+                { "Twilio:WebhookUrl", "https://example.com" },
+                { "Whisper:ApiKey", "test_whisper_key" },
+                { "Whisper:Model", "whisper-1" },
+                { "Whisper:Endpoint", "https://api.openai.com/v1/audio/transcriptions" },
+                { "Whisper:TimeoutSeconds", "60" },
+                { "OpenAI:ApiKey", "test_openai_key" },
+                { "OpenAI:Endpoint", "https://api.openai.com/v1/" },
+                { "OpenAI:DefaultModel", "gpt-4o-mini" },
+                { "OpenAI:TimeoutSeconds", "30" }
             })
             .Build();
         services.AddSingleton<IConfiguration>(configuration); // Register IConfiguration

@@ -58,6 +58,33 @@ public class Program
 
         ConfigureInfrastructure(builder);
 
+        // Configure and validate client options
+        builder.Services.Configure<Prepared.Client.Options.RateLimitingOptions>(
+            builder.Configuration.GetSection(Prepared.Client.Options.RateLimitingOptions.SectionName));
+        builder.Services.Configure<Prepared.Client.Options.CorsOptions>(
+            builder.Configuration.GetSection(Prepared.Client.Options.CorsOptions.SectionName));
+
+        // Validate options at startup
+        builder.Services.AddOptions<Prepared.Client.Options.RateLimitingOptions>()
+            .Bind(builder.Configuration.GetSection(Prepared.Client.Options.RateLimitingOptions.SectionName))
+            .Validate(options =>
+            {
+                var context = new System.ComponentModel.DataAnnotations.ValidationContext(options);
+                var results = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
+                return System.ComponentModel.DataAnnotations.Validator.TryValidateObject(options, context, results, true);
+            }, "Rate limiting configuration validation failed")
+            .ValidateOnStart();
+
+        builder.Services.AddOptions<Prepared.Client.Options.CorsOptions>()
+            .Bind(builder.Configuration.GetSection(Prepared.Client.Options.CorsOptions.SectionName))
+            .Validate(options =>
+            {
+                var context = new System.ComponentModel.DataAnnotations.ValidationContext(options);
+                var results = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
+                return System.ComponentModel.DataAnnotations.Validator.TryValidateObject(options, context, results, true);
+            }, "CORS configuration validation failed")
+            .ValidateOnStart();
+
         builder.Services.AddBusinessServices(builder.Configuration, builder.Environment);
         builder.Services.AddDataServices(builder.Configuration);
 

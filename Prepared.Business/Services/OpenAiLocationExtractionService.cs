@@ -9,6 +9,10 @@ using Prepared.Common.Models;
 
 namespace Prepared.Business.Services;
 
+/// <summary>
+/// OpenAI-powered location extraction service that identifies and geocodes locations from call transcripts.
+/// Uses GPT models with JSON mode to extract structured location data including coordinates and addresses.
+/// </summary>
 public class OpenAiLocationExtractionService : ILocationExtractionService
 {
     private readonly HttpClient _httpClient;
