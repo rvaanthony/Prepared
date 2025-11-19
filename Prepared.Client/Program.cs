@@ -164,7 +164,7 @@ public class Program
         
         app.MapControllerRoute(
             name: "default",
-            pattern: "{controller=Home}/{action=Index}/{id?}")
+            pattern: "{controller=Calls}/{action=Index}/{id?}")
             .WithStaticAssets();
 
         app.Run();

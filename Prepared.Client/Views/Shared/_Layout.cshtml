@@ -5,8 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Prepared</title>
     <script type="importmap"></script>
+    <!-- Bootstrap (loaded from lib folder) -->
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    
+    <!-- Webpack CSS Bundles -->
+    <link rel="stylesheet" href="~/dist/siteStyles.bundle.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/Prepared.Client.styles.css" asp-append-version="true" />
     
     <link rel="shortcut icon" href="~/img/PreparedIcon180x180.png" />
@@ -15,41 +18,71 @@
     <link rel="apple-touch-icon" sizes="180x180" href="~/img/PreparedIcon180x180.png" />
 </head>
 <body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">Prepared.Client</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-                        </li>
-                    </ul>
+    @{
+        // Only show navbar/footer if not on the Calls dashboard
+        var controller = ViewContext.RouteData.Values["controller"]?.ToString();
+        var action = ViewContext.RouteData.Values["action"]?.ToString();
+        var isDashboard = controller == "Calls" && action == "Index";
+    }
+    
+    @if (!isDashboard)
+    {
+        <header>
+            <nav class="navbar navbar-expand-sm navbar-light bg-white border-bottom mb-3">
+                <div class="container-fluid">
+                    <a class="navbar-brand fw-bold" asp-area="" asp-controller="Calls" asp-action="Index">Prepared</a>
+                    <div class="navbar-nav ms-auto">
+                        <a class="nav-link" asp-area="" asp-controller="Calls" asp-action="Index">Dashboard</a>
+                    </div>
+                </div>
+            </nav>
+        </header>
+        <div class="container">
+            <main role="main" class="pb-3">
+                @RenderBody()
+            </main>
+        </div>
+        <footer class="border-top footer text-muted mt-5">
+            <div class="container text-center py-3">
+                <small>&copy; 2025 Prepared</small>
+            </div>
+        </footer>
+    }
+    else
+    {
+        <!-- Enhanced header for dashboard -->
+        <header class="bg-white border-bottom shadow-sm dashboard-header" style="position: sticky; top: 0; z-index: 1000;">
+            <div class="container-fluid px-4">
+                <div class="d-flex justify-content-between align-items-center py-3">
+                    <div class="d-flex align-items-center">
+                        <h2 class="mb-0 fw-bold text-primary me-3">Prepared</h2>
+                        <span class="text-muted fs-5">Call Monitoring Dashboard</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <span id="connectionStatus" class="badge connection-badge bg-secondary fs-6 px-3 py-2">Connecting...</span>
+                    </div>
                 </div>
             </div>
-        </nav>
-    </header>
-    <div class="container">
-        <main role="main" class="pb-3">
+        </header>
+        <main role="main">
             @RenderBody()
         </main>
-    </div>
-
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2025 - Prepared.Client - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-        </div>
-    </footer>
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    }
+    <!-- Bootstrap (loaded from lib folder) -->
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/js/site.js" asp-append-version="true"></script>
+    
+    <!-- Webpack JS Bundles -->
+    <script src="~/dist/vendors.bundle.js" asp-append-version="true"></script>
+    <script src="~/dist/layout.bundle.js" asp-append-version="true"></script>
+    
+    @{
+        // Conditionally load page-specific bundles (reuse variables from above)
+        if (controller == "Calls" && action == "Index")
+        {
+            <script src="~/dist/calls.bundle.js" asp-append-version="true"></script>
+        }
+    }
+    
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

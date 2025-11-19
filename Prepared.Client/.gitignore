@@ -1,0 +1,12 @@
+# Webpack build output
+wwwroot/dist/*.js
+wwwroot/dist/*.css
+wwwroot/dist/*.map
+!wwwroot/dist/.gitkeep
+
+# Node modules
+node_modules/
+
+# npm
+package-lock.json
+

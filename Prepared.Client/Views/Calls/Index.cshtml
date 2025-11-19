@@ -1,0 +1,157 @@
+@{
+    ViewData["Title"] = "Call Monitoring Dashboard";
+    var googleMapsApiKey = ViewBag.GoogleMapsApiKey as string ?? string.Empty;
+    var signalRHubUrl = ViewBag.SignalRHubUrl as string ?? "/hubs/transcript";
+}
+
+@section Scripts {
+    <script>
+        // Inject configuration for JavaScript
+        window.googleMapsApiKey = '@Html.Raw(googleMapsApiKey)';
+        window.signalRHubUrl = '@Html.Raw(signalRHubUrl)';
+    </script>
+}
+
+<div class="container-fluid px-4 py-3">
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="h4 mb-0 fw-bold">Call Monitoring Dashboard</h1>
+                <button id="refreshCalls" class="btn btn-sm btn-outline-secondary">
+                    ↻ Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Left Column: Calls List -->
+        <div class="col-md-3 mb-3">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        📞 Active Calls
+                    </h5>
+                </div>
+                <div class="card-body p-0" style="max-height: 600px; overflow-y: auto;">
+                    <div id="callsList">
+                        <div class="text-muted p-3">No active calls</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Column: Transcript & Summary -->
+        <div class="col-md-5 mb-3">
+            <!-- Transcript Panel -->
+            <div class="card mb-3">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        💬 Live Transcript
+                    </h5>
+                </div>
+                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                    <div id="transcriptContainer">
+                        <div class="text-muted">Waiting for call transcript...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Panel -->
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        📄 Summary & Key Findings
+                    </h5>
+                </div>
+                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                    <div id="summaryContainer">
+                        <div class="text-muted">Summary will appear here when available...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Location Display -->
+            <div class="card mt-3">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        📍 Extracted Location
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="locationDisplay">
+                        <div class="text-muted">Location will appear here when extracted...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Map -->
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        🗺️ Map View
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div id="map" style="width: 100%; height: 600px; min-height: 600px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .transcript-content {
+        font-family: 'Courier New', monospace;
+        font-size: 0.95rem;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+
+    .summary-content {
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
+
+    .summary-content ul {
+        padding-left: 1.5rem;
+    }
+
+    .summary-content li {
+        margin-bottom: 0.5rem;
+    }
+
+    .location-info {
+        font-size: 0.95rem;
+    }
+
+    .list-group-item {
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .list-group-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .list-group-item.active {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+    }
+
+    #map {
+        border-radius: 0 0 0.375rem 0.375rem;
+    }
+
+    .card {
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+
+    .card-header {
+        font-weight: 600;
+    }
+</style>
+
