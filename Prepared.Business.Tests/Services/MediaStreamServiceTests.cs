@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Prepared.Business.Interfaces;
 using Prepared.Business.Services;
 
 namespace Prepared.Business.Tests.Services;
@@ -8,12 +9,14 @@ namespace Prepared.Business.Tests.Services;
 public class MediaStreamServiceTests
 {
     private readonly Mock<ILogger<MediaStreamService>> _loggerMock;
+    private readonly Mock<ITranscriptHub> _transcriptHubMock;
     private readonly MediaStreamService _service;
 
     public MediaStreamServiceTests()
     {
         _loggerMock = new Mock<ILogger<MediaStreamService>>();
-        _service = new MediaStreamService(_loggerMock.Object);
+        _transcriptHubMock = new Mock<ITranscriptHub>();
+        _service = new MediaStreamService(_loggerMock.Object, _transcriptHubMock.Object);
     }
 
     [Fact]
@@ -37,6 +40,14 @@ public class MediaStreamServiceTests
                     v.ToString()!.Contains("started")),
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+        
+        // Verify SignalR broadcast
+        _transcriptHubMock.Verify(
+            x => x.BroadcastCallStatusUpdateAsync(
+                callSid,
+                "stream_started",
+                It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -175,6 +186,14 @@ public class MediaStreamServiceTests
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
+        
+        // Verify SignalR broadcast
+        _transcriptHubMock.Verify(
+            x => x.BroadcastCallStatusUpdateAsync(
+                callSid,
+                "stream_stopped",
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
@@ -209,7 +228,15 @@ public class MediaStreamServiceTests
     {
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new MediaStreamService(null!));
+            new MediaStreamService(null!, _transcriptHubMock.Object));
+    }
+
+    [Fact]
+    public void Constructor_WithNullTranscriptHub_ShouldThrow()
+    {
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() =>
+            new MediaStreamService(_loggerMock.Object, null!));
     }
 
     [Fact]

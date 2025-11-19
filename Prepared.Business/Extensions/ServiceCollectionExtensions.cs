@@ -13,6 +13,9 @@ public static class ServiceCollectionExtensions
         IConfiguration configuration,
         IHostEnvironment environment)
     {
+        // Note: ITranscriptHub must be registered in the Client project before calling this
+        // because it depends on SignalR infrastructure (IHubContext)
+        
         // Register Twilio services
         services.AddScoped<ITwilioService, TwilioService>();
         services.AddScoped<IMediaStreamService, MediaStreamService>();

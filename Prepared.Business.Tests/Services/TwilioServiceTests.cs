@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Prepared.Business.Interfaces;
 using Prepared.Business.Services;
 using Prepared.Common.Enums;
 using Prepared.Common.Models;
@@ -12,18 +13,20 @@ public class TwilioServiceTests
 {
     private readonly Mock<ILogger<TwilioService>> _loggerMock;
     private readonly Mock<IConfiguration> _configurationMock;
+    private readonly Mock<ITranscriptHub> _transcriptHubMock;
     private readonly TwilioService _service;
 
     public TwilioServiceTests()
     {
         _loggerMock = new Mock<ILogger<TwilioService>>();
         _configurationMock = new Mock<IConfiguration>();
+        _transcriptHubMock = new Mock<ITranscriptHub>();
 
         // Setup configuration
         _configurationMock.Setup(c => c["Twilio:WebhookUrl"]).Returns("https://example.com");
         _configurationMock.Setup(c => c["Twilio:AuthToken"]).Returns("test-auth-token");
 
-        _service = new TwilioService(_loggerMock.Object, _configurationMock.Object);
+        _service = new TwilioService(_loggerMock.Object, _configurationMock.Object, _transcriptHubMock.Object);
     }
 
     [Fact]
@@ -117,6 +120,14 @@ public class TwilioServiceTests
                 It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains(callSid) && v.ToString()!.Contains(status)),
                 It.IsAny<Exception>(),
                 It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)),
+            Times.AtLeastOnce);
+        
+        // Verify SignalR broadcast
+        _transcriptHubMock.Verify(
+            x => x.BroadcastCallStatusUpdateAsync(
+                callSid,
+                status,
+                It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -124,7 +135,7 @@ public class TwilioServiceTests
     public async Task HandleCallStatusUpdateAsync_OnException_ShouldLogError()
     {
         // Arrange
-        var invalidService = new TwilioService(_loggerMock.Object, _configurationMock.Object);
+        var invalidService = new TwilioService(_loggerMock.Object, _configurationMock.Object, _transcriptHubMock.Object);
         var callSid = "CA123456789";
         var status = "invalid-status";
 
@@ -198,7 +209,7 @@ public class TwilioServiceTests
 
         // Act & Assert
         var exception = Assert.Throws<InvalidOperationException>(() =>
-            new TwilioService(_loggerMock.Object, invalidConfig.Object));
+            new TwilioService(_loggerMock.Object, invalidConfig.Object, _transcriptHubMock.Object));
         
         exception.Message.Should().Contain("Twilio:WebhookUrl");
     }
@@ -213,9 +224,17 @@ public class TwilioServiceTests
 
         // Act & Assert
         var exception = Assert.Throws<InvalidOperationException>(() =>
-            new TwilioService(_loggerMock.Object, invalidConfig.Object));
+            new TwilioService(_loggerMock.Object, invalidConfig.Object, _transcriptHubMock.Object));
         
         exception.Message.Should().Contain("Twilio:AuthToken");
+    }
+
+    [Fact]
+    public void Constructor_WithNullTranscriptHub_ShouldThrow()
+    {
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() =>
+            new TwilioService(_loggerMock.Object, _configurationMock.Object, null!));
     }
 
     [Theory]

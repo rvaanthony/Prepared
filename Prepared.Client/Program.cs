@@ -61,6 +61,9 @@ public class Program
         builder.Services.AddBusinessServices(builder.Configuration, builder.Environment);
         builder.Services.AddDataServices(builder.Configuration);
 
+        // Register SignalR hub service
+        builder.Services.AddScoped<Prepared.Business.Interfaces.ITranscriptHub, Prepared.Client.Services.TranscriptHubService>();
+
         var app = builder.Build();
 
         app.MapDefaultEndpoints();
@@ -130,7 +133,7 @@ public class Program
         app.MapStaticAssets();
         
         // Map SignalR hubs
-        // app.MapHub<TranscriptHub>("/hubs/transcript");
+        app.MapHub<Hubs.TranscriptHub>("/hubs/transcript");
         
         app.MapControllerRoute(
             name: "default",

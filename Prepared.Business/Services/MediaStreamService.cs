@@ -9,11 +9,16 @@ namespace Prepared.Business.Services;
 public class MediaStreamService : IMediaStreamService
 {
     private readonly ILogger<MediaStreamService> _logger;
+    private readonly ITranscriptHub _transcriptHub;
     private readonly Dictionary<string, DateTime> _activeStreams = new();
+    private readonly Dictionary<string, string> _streamToCallMapping = new(); // Maps StreamSid to CallSid
 
-    public MediaStreamService(ILogger<MediaStreamService> logger)
+    public MediaStreamService(
+        ILogger<MediaStreamService> logger,
+        ITranscriptHub transcriptHub)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _transcriptHub = transcriptHub ?? throw new ArgumentNullException(nameof(transcriptHub));
     }
 
     public async Task HandleStreamStartAsync(string streamSid, string callSid, CancellationToken cancellationToken = default)
@@ -25,12 +30,18 @@ public class MediaStreamService : IMediaStreamService
                 streamSid, callSid);
 
             _activeStreams[streamSid] = DateTime.UtcNow;
+            _streamToCallMapping[streamSid] = callSid;
+
+            // Notify connected clients that the stream has started
+            await _transcriptHub.BroadcastCallStatusUpdateAsync(
+                callSid,
+                "stream_started",
+                cancellationToken);
 
             // Here you would typically:
             // 1. Create a stream record in the database
             // 2. Initialize transcription service
-            // 3. Notify connected clients via SignalR
-            // 4. Set up any real-time processing pipelines
+            // 3. Set up any real-time processing pipelines
 
             await Task.CompletedTask;
         }
@@ -107,12 +118,20 @@ public class MediaStreamService : IMediaStreamService
                 _activeStreams.Remove(streamSid);
             }
 
+            // Notify connected clients that the stream has ended
+            await _transcriptHub.BroadcastCallStatusUpdateAsync(
+                callSid,
+                "stream_stopped",
+                cancellationToken);
+
+            // Clean up mappings
+            _streamToCallMapping.Remove(streamSid);
+
             // Here you would typically:
             // 1. Finalize the transcript
             // 2. Update the stream record in the database
             // 3. Trigger location extraction from final transcript
-            // 4. Notify clients that the stream has ended
-            // 5. Clean up any resources
+            // 4. Clean up any resources
 
             await Task.CompletedTask;
         }

@@ -18,15 +18,18 @@ public class TwilioService : ITwilioService
 {
     private readonly ILogger<TwilioService> _logger;
     private readonly IConfiguration _configuration;
+    private readonly ITranscriptHub _transcriptHub;
     private readonly string _webhookUrl;
     private readonly string _authToken;
 
     public TwilioService(
         ILogger<TwilioService> logger,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        ITranscriptHub transcriptHub)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        _transcriptHub = transcriptHub ?? throw new ArgumentNullException(nameof(transcriptHub));
         
         _webhookUrl = _configuration["Twilio:WebhookUrl"] 
             ?? throw new InvalidOperationException("Twilio:WebhookUrl configuration is required");
@@ -104,10 +107,15 @@ public class TwilioService : ITwilioService
             // Map Twilio status to our enum
             var callStatus = MapTwilioStatusToCallStatus(status);
             
+            // Notify connected clients via SignalR
+            await _transcriptHub.BroadcastCallStatusUpdateAsync(
+                callSid,
+                status,
+                cancellationToken);
+            
             // Here you would typically:
             // 1. Update the call record in the database
-            // 2. Notify connected clients via SignalR
-            // 3. Trigger any cleanup or post-processing
+            // 2. Trigger any cleanup or post-processing
             
             _logger.LogInformation(
                 "Processed call status update: CallSid={CallSid}, Status={Status}",

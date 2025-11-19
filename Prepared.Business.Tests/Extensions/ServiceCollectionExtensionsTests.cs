@@ -19,6 +19,9 @@ public class ServiceCollectionExtensionsTests
         // Arrange
         var services = new ServiceCollection();
         services.AddLogging(); // Add logging services required by TwilioService and MediaStreamService
+        var mockTranscriptHub = new Mock<ITranscriptHub>();
+        // Register ITranscriptHub as scoped - use factory to return the same mock instance
+        services.AddScoped<ITranscriptHub>(_ => mockTranscriptHub.Object); // Register ITranscriptHub (required by TwilioService)
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -27,6 +30,7 @@ public class ServiceCollectionExtensionsTests
                 { "Twilio:WebhookUrl", "https://example.com" }
             })
             .Build();
+        services.AddSingleton<IConfiguration>(configuration); // Register IConfiguration
         var environment = new Mock<IHostEnvironment>();
         environment.Setup(e => e.EnvironmentName).Returns("Development");
 
@@ -35,7 +39,8 @@ public class ServiceCollectionExtensionsTests
 
         // Assert
         var serviceProvider = services.BuildServiceProvider();
-        var twilioService = serviceProvider.GetService<ITwilioService>();
+        using var scope = serviceProvider.CreateScope();
+        var twilioService = scope.ServiceProvider.GetService<ITwilioService>();
         twilioService.Should().NotBeNull();
         twilioService.Should().BeOfType<TwilioService>();
     }
@@ -46,6 +51,8 @@ public class ServiceCollectionExtensionsTests
         // Arrange
         var services = new ServiceCollection();
         services.AddLogging(); // Add logging services required by TwilioService and MediaStreamService
+        var mockTranscriptHub = new Mock<ITranscriptHub>();
+        services.AddScoped<ITranscriptHub>(_ => mockTranscriptHub.Object); // Register ITranscriptHub
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -62,7 +69,8 @@ public class ServiceCollectionExtensionsTests
 
         // Assert
         var serviceProvider = services.BuildServiceProvider();
-        var mediaStreamService = serviceProvider.GetService<IMediaStreamService>();
+        using var scope = serviceProvider.CreateScope();
+        var mediaStreamService = scope.ServiceProvider.GetService<IMediaStreamService>();
         mediaStreamService.Should().NotBeNull();
         mediaStreamService.Should().BeOfType<MediaStreamService>();
     }
@@ -96,6 +104,9 @@ public class ServiceCollectionExtensionsTests
         // Arrange
         var services = new ServiceCollection();
         services.AddLogging(); // Add logging services required by TwilioService and MediaStreamService
+        var mockTranscriptHub = new Mock<ITranscriptHub>();
+        // Register ITranscriptHub as scoped - use factory to return the same mock instance
+        services.AddScoped<ITranscriptHub>(_ => mockTranscriptHub.Object); // Register ITranscriptHub (required by TwilioService)
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -104,6 +115,7 @@ public class ServiceCollectionExtensionsTests
                 { "Twilio:WebhookUrl", "https://example.com" }
             })
             .Build();
+        services.AddSingleton<IConfiguration>(configuration); // Register IConfiguration
         var environment = new Mock<IHostEnvironment>();
         environment.Setup(e => e.EnvironmentName).Returns("Development");
 
@@ -112,10 +124,13 @@ public class ServiceCollectionExtensionsTests
 
         // Assert
         var serviceProvider = services.BuildServiceProvider();
-        var twilioService1 = serviceProvider.GetService<ITwilioService>();
-        var twilioService2 = serviceProvider.GetService<ITwilioService>();
+        using var scope = serviceProvider.CreateScope();
+        var twilioService1 = scope.ServiceProvider.GetService<ITwilioService>();
+        var twilioService2 = scope.ServiceProvider.GetService<ITwilioService>();
         
         // Scoped services should return the same instance within the same scope
+        twilioService1.Should().NotBeNull();
+        twilioService2.Should().NotBeNull();
         twilioService1.Should().BeSameAs(twilioService2);
     }
 }
