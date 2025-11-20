@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -103,8 +104,10 @@ public class WhisperTranscriptionService : ITranscriptionService
     {
         var content = new MultipartFormDataContent();
 
-        // Add audio content as a stream (Whisper expects audio file upload)
-        var audioContent = new ByteArrayContent(audioBytes.ToArray());
+        // Convert Twilio's mu-law PCM bytes into a proper WAV container that OpenAI accepts.
+        var wavBytes = ConvertMuLawToWav(audioBytes.Span, sampleRate: 8000);
+
+        var audioContent = new ByteArrayContent(wavBytes);
         audioContent.Headers.ContentType = new MediaTypeHeaderValue("audio/wav");
         content.Add(audioContent, "file", $"chunk_{Guid.NewGuid():N}.wav");
 
@@ -112,6 +115,77 @@ public class WhisperTranscriptionService : ITranscriptionService
         content.Add(new StringContent(_options.Temperature.ToString("0.0")), "temperature");
 
         return content;
+    }
+
+    /// <summary>
+    /// Converts 8-bit mu-law PCM (as sent by Twilio Media Streams) into a 16-bit
+    /// linear PCM WAV byte array.
+    /// </summary>
+    private static byte[] ConvertMuLawToWav(ReadOnlySpan<byte> muLawData, int sampleRate)
+    {
+        // Decode mu-law to 16-bit PCM
+        var pcmSamples = new short[muLawData.Length];
+        for (var i = 0; i < muLawData.Length; i++)
+        {
+            pcmSamples[i] = MuLawToPcm16(muLawData[i]);
+        }
+
+        // Build a standard 44-byte PCM WAV header
+        const short audioFormat = 1; // PCM
+        const short numChannels = 1;
+        const short bitsPerSample = 16;
+        var byteRate = sampleRate * numChannels * bitsPerSample / 8;
+        var blockAlign = (short)(numChannels * bitsPerSample / 8);
+
+        var dataSize = pcmSamples.Length * sizeof(short);
+        var riffChunkSize = 36 + dataSize;
+
+        using var ms = new MemoryStream(44 + dataSize);
+        using var writer = new BinaryWriter(ms);
+
+        // RIFF header
+        writer.Write(Encoding.ASCII.GetBytes("RIFF"));
+        writer.Write(riffChunkSize);
+        writer.Write(Encoding.ASCII.GetBytes("WAVE"));
+
+        // fmt  subchunk
+        writer.Write(Encoding.ASCII.GetBytes("fmt "));
+        writer.Write(16); // Subchunk1Size for PCM
+        writer.Write(audioFormat);
+        writer.Write(numChannels);
+        writer.Write(sampleRate);
+        writer.Write(byteRate);
+        writer.Write(blockAlign);
+        writer.Write(bitsPerSample);
+
+        // data subchunk
+        writer.Write(Encoding.ASCII.GetBytes("data"));
+        writer.Write(dataSize);
+
+        // PCM data (little-endian)
+        foreach (var sample in pcmSamples)
+        {
+            writer.Write(sample);
+        }
+
+        writer.Flush();
+        return ms.ToArray();
+    }
+
+    /// <summary>
+    /// Standard G.711 mu-law to 16-bit PCM conversion.
+    /// </summary>
+    private static short MuLawToPcm16(byte muLaw)
+    {
+        muLaw = (byte)~muLaw;
+
+        var sign = muLaw & 0x80;
+        var exponent = (muLaw & 0x70) >> 4;
+        var mantissa = muLaw & 0x0F;
+        var magnitude = ((mantissa << 3) + 0x84) << exponent;
+        magnitude -= 0x84;
+
+        return (short)(sign != 0 ? -magnitude : magnitude);
     }
 
     private sealed record WhisperResponse(string Text, double? Confidence);
