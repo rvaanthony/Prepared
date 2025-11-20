@@ -199,8 +199,19 @@ public class MediaStreamService : IMediaStreamService
                             transcriptionResult.IsFinal,
                             cancellationToken);
 
-                        // Real-time location extraction - check periodically as transcript builds up
-                        await TryExtractLocationRealTimeAsync(callSid, cancellationToken);
+                        // Real-time location extraction - fire-and-forget to avoid blocking transcription pipeline
+                        // If it times out or fails, we'll try again later or extract at call end
+                        // Don't await - let it run in background without blocking transcript processing
+                        _ = TryExtractLocationRealTimeAsync(callSid, cancellationToken)
+                            .ContinueWith(task =>
+                            {
+                                if (task.IsFaulted && task.Exception != null)
+                                {
+                                    _logger.LogWarning(task.Exception, 
+                                        "Background real-time insights extraction failed (non-blocking): CallSid={CallSid}", 
+                                        callSid);
+                                }
+                            }, TaskContinuationOptions.OnlyOnFaulted);
                     }
                 }
                 else
