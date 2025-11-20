@@ -43,10 +43,10 @@ public class OpenAiSummarizationService : ISummarizationService
         try
         {
             var model = _options.SummarizationModel ?? _options.DefaultModel;
-            var isReasoningModel = model.StartsWith("o1", StringComparison.OrdinalIgnoreCase);
+            var isGpt5Model = model.StartsWith("gpt-5", StringComparison.OrdinalIgnoreCase);
             
             object payload;
-            if (isReasoningModel)
+            if (isGpt5Model)
             {
                 payload = new
                 {

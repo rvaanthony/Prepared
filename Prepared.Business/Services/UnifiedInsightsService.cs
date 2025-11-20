@@ -128,15 +128,16 @@ Return ONLY valid JSON with this EXACT structure:
   ""key_findings"": [""finding 1"", ""finding 2"", ""finding 3""]
 }";
 
-            // Check if using reasoning model (o1, o1-mini) - they don't support temperature
-            var isReasoningModel = _options.DefaultModel.StartsWith("o1", StringComparison.OrdinalIgnoreCase);
+            // Check if using gpt-5 models (gpt-5-mini, gpt-5, etc.) - they don't support temperature
+            var modelName = _options.DefaultModel;
+            var isGpt5Model = modelName.StartsWith("gpt-5", StringComparison.OrdinalIgnoreCase);
             
             object payload;
-            if (isReasoningModel)
+            if (isGpt5Model)
             {
                 payload = new
                 {
-                    model = _options.DefaultModel,
+                    model = modelName,
                     response_format = new { type = "json_object" },
                     messages = new[]
                     {
@@ -149,8 +150,8 @@ Return ONLY valid JSON with this EXACT structure:
             {
                 payload = new
                 {
-                    model = _options.DefaultModel,
-                    temperature = 0.1, // Low temperature for consistent extraction (not supported by o1 models)
+                    model = modelName,
+                    temperature = 0.1, // Low temperature for consistent extraction (not supported by gpt-5 models)
                     response_format = new { type = "json_object" },
                     messages = new[]
                     {
