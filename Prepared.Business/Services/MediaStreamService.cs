@@ -134,7 +134,7 @@ public class MediaStreamService : IMediaStreamService
                 audioBuffer.AddRange(audioBytes);
 
                 // At 8kHz mu-law, 0.1s ≈ 800 bytes. Use a slightly larger threshold to be safe.
-                const int minBytesForTranscription = 1600; // ~0.2 seconds of audio
+                const int minBytesForTranscription = 8000; // ~1 second of 8kHz μ-law audio (better for Whisper)
                 if (audioBuffer.Count < minBytesForTranscription)
                 {
                     _logger.LogDebug(

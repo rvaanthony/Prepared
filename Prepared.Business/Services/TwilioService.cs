@@ -88,7 +88,8 @@ public class TwilioService : ITwilioService
             var stream = new Stream
             {
                 Url = mediaStreamUrl,
-                Name = callInfo.CallSid // Use CallSid as stream identifier
+                Name = callInfo.CallSid, // Use CallSid as stream identifier
+                Track = "inbound_track" // Only capture caller's voice, not our greeting
             };
             start.Append(stream);
             response.Append(start);
