@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Prepared.Business.Interfaces;
 using Prepared.Common.Enums;
@@ -19,39 +18,23 @@ namespace Prepared.Business.Services;
 public class TwilioService : ITwilioService
 {
     private readonly ILogger<TwilioService> _logger;
-    private readonly IConfiguration _configuration;
+    private readonly ITwilioConfigurationService _config;
     private readonly ITranscriptHub _transcriptHub;
     private readonly ICallRepository _callRepository;
-    private readonly string _webhookUrl;
-    private readonly string _authToken;
 
     public TwilioService(
         ILogger<TwilioService> logger,
-        IConfiguration configuration,
+        ITwilioConfigurationService config,
         ITranscriptHub transcriptHub,
         ICallRepository callRepository)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        _config = config ?? throw new ArgumentNullException(nameof(config));
         _transcriptHub = transcriptHub ?? throw new ArgumentNullException(nameof(transcriptHub));
         _callRepository = callRepository ?? throw new ArgumentNullException(nameof(callRepository));
         
-        _webhookUrl = _configuration["Twilio:WebhookUrl"] 
-            ?? throw new InvalidOperationException("Twilio:WebhookUrl configuration is required");
-        
         // Initialize TwilioClient with API keys
-        var keySid = _configuration["Twilio:KeySid"] 
-            ?? throw new InvalidOperationException("Twilio:KeySid configuration is required");
-        var keySecret = _configuration["Twilio:SecretKey"] 
-            ?? throw new InvalidOperationException("Twilio:SecretKey configuration is required");
-        var accountSid = _configuration["Twilio:AccountSid"] 
-            ?? throw new InvalidOperationException("Twilio:AccountSid configuration is required");
-        
-        TwilioClient.Init(username: keySid, password: keySecret, accountSid: accountSid);
-        
-        // Use Auth Token for webhook validation (required - Twilio signs webhooks with Auth Token)
-        _authToken = _configuration["Twilio:AuthToken"] 
-            ?? throw new InvalidOperationException("Twilio:AuthToken configuration is required for webhook validation");
+        TwilioClient.Init(username: _config.KeySid, password: _config.SecretKey, accountSid: _config.AccountSid);
         
         _logger.LogInformation("TwilioClient initialized with API Key authentication, using Auth Token for webhook validation");
     }
@@ -94,7 +77,7 @@ public class TwilioService : ITwilioService
             // Note: Answer verb is implicit for incoming calls that play audio
             // The <Start><Stream> will auto-answer the call before starting the stream
             
-            var baseUrl = _webhookUrl.TrimEnd('/');
+            var baseUrl = _config.WebhookUrl.TrimEnd('/');
             // Media streams require WebSocket URL (wss://)
             var mediaStreamUrl = baseUrl.Replace("https://", "wss://").Replace("http://", "ws://");
             mediaStreamUrl = $"{mediaStreamUrl}/api/twilio/media-stream";
@@ -111,9 +94,9 @@ public class TwilioService : ITwilioService
 
             // Say a greeting message
             response.Say(
-                "Thank you for calling. Your call is being processed and transcribed in real time.",
-                voice: "alice",
-                language: "en-US");
+                _config.GreetingMessage,
+                voice: Say.VoiceEnum.PollyJoannaNeural,
+                language: Say.LanguageEnum.EnUs);
 
             // Keep the call alive
             response.Pause(length: 3600); // Max 1 hour pause
@@ -138,9 +121,9 @@ public class TwilioService : ITwilioService
             // Return a safe TwiML response that hangs up gracefully
             var errorResponse = new VoiceResponse();
             errorResponse.Say(
-                "We're sorry, but we're experiencing technical difficulties. Please try again later.",
-                voice: "alice",
-                language: "en-US");
+                _config.ErrorMessage,
+                voice: Say.VoiceEnum.PollyJoannaNeural,
+                language: Say.LanguageEnum.EnUs);
             errorResponse.Hangup();
             
             return errorResponse.ToString();
@@ -195,8 +178,7 @@ public class TwilioService : ITwilioService
         try
         {
             // Check if validation is disabled (for debugging only - remove in production!)
-            var disableValidation = _configuration.GetValue<bool>("Twilio:DisableWebhookValidation", false);
-            if (disableValidation)
+            if (_config.DisableWebhookValidation)
             {
                 _logger.LogWarning("Webhook signature validation is DISABLED - this should only be used for debugging!");
                 return true;
@@ -208,14 +190,14 @@ public class TwilioService : ITwilioService
                 return false;
             }
 
-            if (string.IsNullOrWhiteSpace(_authToken))
+            if (string.IsNullOrWhiteSpace(_config.AuthToken))
             {
                 _logger.LogError("Webhook signature validation failed: Auth Token is not configured");
                 return false;
             }
 
             // Try the provided URL first
-            var validator = new RequestValidator(_authToken);
+            var validator = new RequestValidator(_config.AuthToken);
             var isValid = validator.Validate(url, parameters, signature);
 
             if (isValid)
@@ -275,7 +257,7 @@ public class TwilioService : ITwilioService
 
     public string GetWebhookBaseUrl()
     {
-        return _webhookUrl;
+        return _config.WebhookUrl;
     }
 
     private static CallStatus MapTwilioStatusToCallStatus(string twilioStatus)

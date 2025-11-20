@@ -33,6 +33,9 @@ public static class ServiceCollectionExtensions
         services.Configure<WhisperOptions>(configuration.GetSection(WhisperOptions.SectionName));
         services.Configure<OpenAiOptions>(configuration.GetSection(OpenAiOptions.SectionName));
         services.Configure<MediaStreamOptions>(configuration.GetSection(MediaStreamOptions.SectionName));
+        
+        // Register Twilio configuration service (read-only container for configuration values)
+        services.AddSingleton<ITwilioConfigurationService, TwilioConfigurationService>();
 
         // Validate options at startup (fail fast if misconfigured)
         services.AddOptions<WhisperOptions>()
