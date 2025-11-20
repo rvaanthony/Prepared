@@ -30,6 +30,7 @@ public class TwilioServiceTests
         _configurationMock.Setup(c => c["Twilio:AccountSid"]).Returns("AC123456789");
         _configurationMock.Setup(c => c["Twilio:KeySid"]).Returns("SK123456789");
         _configurationMock.Setup(c => c["Twilio:SecretKey"]).Returns("test-secret-key");
+        _configurationMock.Setup(c => c["Twilio:AuthToken"]).Returns("test-auth-token"); // Required for webhook validation
 
         _service = new TwilioService(_loggerMock.Object, _configurationMock.Object, _transcriptHubMock.Object, _callRepositoryMock.Object);
     }

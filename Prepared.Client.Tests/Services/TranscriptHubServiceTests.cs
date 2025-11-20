@@ -63,8 +63,8 @@ public class TranscriptHubServiceTests
         // Assert
         _clientProxyMock.Verify(
             x => x.SendCoreAsync(
-                "TranscriptUpdate",
-                It.Is<object[]>(args => args.Length == 1),
+                "ReceiveTranscriptUpdate",
+                It.Is<object[]>(args => args.Length == 3), // callSid, transcript, isFinal
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -127,9 +127,9 @@ public class TranscriptHubServiceTests
         // Assert
         _clientProxyMock.Verify(
             x => x.SendCoreAsync(
-                "TranscriptUpdate",
+                "ReceiveTranscriptUpdate",
                 It.Is<object[]>(args => 
-                    args.Length == 1 && 
+                    args.Length == 3 && // callSid, transcript, isFinal
                     args[0] != null),
                 It.IsAny<CancellationToken>()),
             Times.Once);
@@ -148,8 +148,8 @@ public class TranscriptHubServiceTests
         // Assert
         _clientProxyMock.Verify(
             x => x.SendCoreAsync(
-                "CallStatusUpdate",
-                It.Is<object[]>(args => args.Length == 1),
+                "ReceiveCallStatusUpdate",
+                It.Is<object[]>(args => args.Length == 2), // callSid, status
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -169,8 +169,8 @@ public class TranscriptHubServiceTests
         // Assert
         _clientProxyMock.Verify(
             x => x.SendCoreAsync(
-                "LocationUpdate",
-                It.Is<object[]>(args => args.Length == 1),
+                "ReceiveLocationUpdate",
+                It.Is<object[]>(args => args.Length == 4), // callSid, lat, lng, address
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -189,7 +189,7 @@ public class TranscriptHubServiceTests
         // Assert
         _clientProxyMock.Verify(
             x => x.SendCoreAsync(
-                "LocationUpdate",
+                "ReceiveLocationUpdate",
                 It.IsAny<object[]>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
@@ -236,8 +236,8 @@ public class TranscriptHubServiceTests
         // Assert
         _clientProxyMock.Verify(
             x => x.SendCoreAsync(
-                "SummaryUpdate",
-                It.Is<object[]>(args => args.Length == 1),
+                "ReceiveSummaryUpdate",
+                It.Is<object[]>(args => args.Length == 3), // callSid, summary, keyFindings
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

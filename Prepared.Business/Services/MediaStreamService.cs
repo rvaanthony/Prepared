@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Prepared.Business.Interfaces;
+using Prepared.Business.Options;
 using Prepared.Data.Interfaces;
 
 namespace Prepared.Business.Services;
@@ -18,6 +20,7 @@ public class MediaStreamService : IMediaStreamService
     private readonly ITranscriptRepository _transcriptRepository;
     private readonly ISummaryRepository _summaryRepository;
     private readonly ILocationRepository _locationRepository;
+    private readonly MediaStreamOptions _options;
     private readonly Dictionary<string, DateTime> _activeStreams = new();
     private readonly Dictionary<string, string> _streamToCallMapping = new(); // Maps StreamSid to CallSid
     private readonly Dictionary<string, List<string>> _transcriptBuffers = new(); // CallSid => transcript segments
@@ -33,7 +36,8 @@ public class MediaStreamService : IMediaStreamService
         ICallRepository callRepository,
         ITranscriptRepository transcriptRepository,
         ISummaryRepository summaryRepository,
-        ILocationRepository locationRepository)
+        ILocationRepository locationRepository,
+        IOptions<MediaStreamOptions> options)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _transcriptHub = transcriptHub ?? throw new ArgumentNullException(nameof(transcriptHub));
@@ -44,6 +48,7 @@ public class MediaStreamService : IMediaStreamService
         _transcriptRepository = transcriptRepository ?? throw new ArgumentNullException(nameof(transcriptRepository));
         _summaryRepository = summaryRepository ?? throw new ArgumentNullException(nameof(summaryRepository));
         _locationRepository = locationRepository ?? throw new ArgumentNullException(nameof(locationRepository));
+        _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
     }
 
     public async Task HandleStreamStartAsync(string streamSid, string callSid, CancellationToken cancellationToken = default)
@@ -133,8 +138,9 @@ public class MediaStreamService : IMediaStreamService
 
                 audioBuffer.AddRange(audioBytes);
 
-                // At 8kHz mu-law, 0.1s ≈ 800 bytes. Use a slightly larger threshold to be safe.
-                const int minBytesForTranscription = 8000; // ~1 second of 8kHz μ-law audio (better for Whisper)
+                // Calculate minimum bytes based on configured buffer duration
+                // At 8kHz μ-law (8-bit, mono), 1 second ≈ 8000 bytes
+                var minBytesForTranscription = (int)(_options.SampleRate * _options.AudioBufferSeconds);
                 if (audioBuffer.Count < minBytesForTranscription)
                 {
                     _logger.LogDebug(
@@ -145,6 +151,15 @@ public class MediaStreamService : IMediaStreamService
 
                 var bufferedAudio = audioBuffer.ToArray();
                 audioBuffer.Clear();
+
+                // Skip silent chunks to avoid gibberish transcriptions
+                if (IsSilentChunk(bufferedAudio))
+                {
+                    _logger.LogDebug(
+                        "Skipping silent audio chunk: StreamSid={StreamSid}, BufferedSize={Size} bytes",
+                        streamSid, bufferedAudio.Length);
+                    return;
+                }
 
                 if (_streamToCallMapping.TryGetValue(streamSid, out var callSid))
                 {
@@ -213,6 +228,47 @@ public class MediaStreamService : IMediaStreamService
                     streamSid, duration);
                 
                 _activeStreams.Remove(streamSid);
+            }
+
+            // Process any remaining buffered audio before stopping
+            if (_audioBuffers.TryGetValue(streamSid, out var remainingAudio) && remainingAudio.Count > 0)
+            {
+                _logger.LogInformation(
+                    "Processing final buffered audio chunk: StreamSid={StreamSid}, BufferedSize={Size} bytes",
+                    streamSid, remainingAudio.Count);
+
+                var finalAudio = remainingAudio.ToArray();
+                if (!IsSilentChunk(finalAudio))
+                {
+                    var transcriptionResult = await _transcriptionService.TranscribeAsync(
+                        callSid,
+                        streamSid,
+                        finalAudio,
+                        isFinal: true,
+                        cancellationToken);
+
+                    if (transcriptionResult?.Text is { Length: > 0 } text)
+                    {
+                        AppendTranscript(callSid, text);
+
+                        try
+                        {
+                            var sequenceNumber = _transcriptSequenceNumbers.GetValueOrDefault(callSid, 0);
+                            await _transcriptRepository.SaveAsync(transcriptionResult, sequenceNumber, cancellationToken);
+                            _transcriptSequenceNumbers[callSid] = sequenceNumber + 1;
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to save final transcript chunk: CallSid={CallSid}", callSid);
+                        }
+
+                        await _transcriptHub.BroadcastTranscriptUpdateAsync(
+                            callSid,
+                            text,
+                            transcriptionResult.IsFinal,
+                            cancellationToken);
+                    }
+                }
             }
 
             // Notify connected clients that the stream has ended
@@ -320,6 +376,28 @@ public class MediaStreamService : IMediaStreamService
         {
             _logger.LogError(ex, "Error generating insights for CallSid={CallSid}", callSid);
         }
+    }
+
+    /// <summary>
+    /// Checks if an audio chunk is effectively silent (mostly μ-law 0xFF or 0x7F values).
+    /// μ-law silence is typically 0xFF (255) or 0x7F (127).
+    /// </summary>
+    private bool IsSilentChunk(byte[] muLawAudio)
+    {
+        if (muLawAudio.Length == 0)
+            return true;
+
+        // Count how many bytes are near silence (0xFF or 0x7F, ±2)
+        var silentCount = 0;
+        foreach (var b in muLawAudio)
+        {
+            if (b >= 0xFD || (b >= 0x7D && b <= 0x81))
+                silentCount++;
+        }
+
+        // Use configurable threshold
+        var silenceRatio = (double)silentCount / muLawAudio.Length;
+        return silenceRatio > _options.SilenceThreshold;
     }
 }
 
