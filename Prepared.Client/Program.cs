@@ -28,6 +28,9 @@ public class Program
         // Add services to the container.
         builder.Services.AddControllersWithViews()
         .AddRazorRuntimeCompilation();
+        
+        // Register WebSocket handler for media streams
+        builder.Services.AddScoped<APIs.MediaStreamWebSocketHandler>();
 
         // Add FluentValidation
         builder.Services.AddValidatorsFromAssemblyContaining<Program>();
@@ -156,6 +159,23 @@ public class Program
         });
 
         app.UseAuthorization();
+        
+        // WebSocket support for Twilio Media Streams
+        app.UseWebSockets();
+        
+        // Handle Twilio Media Stream WebSocket connections
+        app.Use(async (context, next) =>
+        {
+            if (context.Request.Path.StartsWithSegments("/api/twilio/media-stream") && context.WebSockets.IsWebSocketRequest)
+            {
+                var handler = context.RequestServices.GetRequiredService<APIs.MediaStreamWebSocketHandler>();
+                await handler.HandleAsync(context);
+                return;
+            }
+            
+            await next();
+        });
+        
         app.MapHealthChecks("api/health");
         app.MapStaticAssets();
         

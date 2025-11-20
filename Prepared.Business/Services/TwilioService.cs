@@ -76,9 +76,13 @@ public class TwilioService : ITwilioService
             }
 
             var response = new VoiceResponse();
+            // Note: Answer verb is implicit for incoming calls that play audio
+            // The <Start><Stream> will auto-answer the call before starting the stream
             
             var baseUrl = _webhookUrl.TrimEnd('/');
-            var mediaStreamUrl = $"{baseUrl}/api/twilio/media-stream";
+            // Media streams require WebSocket URL (wss://)
+            var mediaStreamUrl = baseUrl.Replace("https://", "wss://").Replace("http://", "ws://");
+            mediaStreamUrl = $"{mediaStreamUrl}/api/twilio/media-stream";
             
             var start = new Start();
             var stream = new Stream
