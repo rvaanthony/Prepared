@@ -17,7 +17,7 @@ public class MediaStreamServiceTests
     private readonly Mock<ITranscriptionService> _transcriptionServiceMock;
     private readonly Mock<ISummarizationService> _summarizationServiceMock;
     private readonly Mock<ILocationExtractionService> _locationExtractionServiceMock;
-    private readonly Mock<UnifiedInsightsService> _unifiedInsightsServiceMock;
+    private readonly Mock<IUnifiedInsightsService> _unifiedInsightsServiceMock;
     private readonly Mock<ICallRepository> _callRepositoryMock;
     private readonly Mock<ITranscriptRepository> _transcriptRepositoryMock;
     private readonly Mock<ISummaryRepository> _summaryRepositoryMock;
@@ -32,7 +32,7 @@ public class MediaStreamServiceTests
         _transcriptionServiceMock = new Mock<ITranscriptionService>();
         _summarizationServiceMock = new Mock<ISummarizationService>();
         _locationExtractionServiceMock = new Mock<ILocationExtractionService>();
-        _unifiedInsightsServiceMock = new Mock<UnifiedInsightsService>();
+        _unifiedInsightsServiceMock = new Mock<IUnifiedInsightsService>();
         _callRepositoryMock = new Mock<ICallRepository>();
         _transcriptRepositoryMock = new Mock<ITranscriptRepository>();
         _summaryRepositoryMock = new Mock<ISummaryRepository>();

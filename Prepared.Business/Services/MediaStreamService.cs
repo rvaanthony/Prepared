@@ -16,7 +16,7 @@ public class MediaStreamService : IMediaStreamService
     private readonly ITranscriptionService _transcriptionService;
     private readonly ISummarizationService _summarizationService;
     private readonly ILocationExtractionService _locationExtractionService;
-    private readonly UnifiedInsightsService _unifiedInsightsService;
+    private readonly IUnifiedInsightsService _unifiedInsightsService;
     private readonly ICallRepository _callRepository;
     private readonly ITranscriptRepository _transcriptRepository;
     private readonly ISummaryRepository _summaryRepository;
@@ -36,7 +36,7 @@ public class MediaStreamService : IMediaStreamService
         ITranscriptionService transcriptionService,
         ISummarizationService summarizationService,
         ILocationExtractionService locationExtractionService,
-        UnifiedInsightsService unifiedInsightsService,
+        IUnifiedInsightsService unifiedInsightsService,
         ICallRepository callRepository,
         ITranscriptRepository transcriptRepository,
         ISummaryRepository summaryRepository,
@@ -66,7 +66,6 @@ public class MediaStreamService : IMediaStreamService
 
             _activeStreams[streamSid] = DateTime.UtcNow;
             _streamToCallMapping[streamSid] = callSid;
-            _audioBuffers[streamSid] = new List<byte>();
             _audioBuffers[streamSid] = new List<byte>();
 
             // Update call record with stream information

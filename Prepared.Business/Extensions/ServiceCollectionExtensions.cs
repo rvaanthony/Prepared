@@ -33,6 +33,9 @@ public static class ServiceCollectionExtensions
         services.Configure<WhisperOptions>(configuration.GetSection(WhisperOptions.SectionName));
         services.Configure<OpenAiOptions>(configuration.GetSection(OpenAiOptions.SectionName));
         services.Configure<MediaStreamOptions>(configuration.GetSection(MediaStreamOptions.SectionName));
+        
+        // Register Twilio configuration service (read-only container for configuration values)
+        services.AddSingleton<ITwilioConfigurationService, TwilioConfigurationService>();
 
         // Validate options at startup (fail fast if misconfigured)
         services.AddOptions<WhisperOptions>()
@@ -85,7 +88,7 @@ public static class ServiceCollectionExtensions
         });
 
         // Register unified insights service for efficient single-call extraction
-        services.AddHttpClient<UnifiedInsightsService>((sp, client) =>
+        services.AddHttpClient<IUnifiedInsightsService, UnifiedInsightsService>((sp, client) =>
         {
             var options = sp.GetRequiredService<IOptions<OpenAiOptions>>().Value;
             client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
