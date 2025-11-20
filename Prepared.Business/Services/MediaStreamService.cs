@@ -57,6 +57,7 @@ public class MediaStreamService : IMediaStreamService
             _activeStreams[streamSid] = DateTime.UtcNow;
             _streamToCallMapping[streamSid] = callSid;
             _audioBuffers[streamSid] = new List<byte>();
+            _audioBuffers[streamSid] = new List<byte>();
 
             // Update call record with stream information
             try
@@ -71,6 +72,17 @@ public class MediaStreamService : IMediaStreamService
 
             // Initialize sequence number for this call
             _transcriptSequenceNumbers[callSid] = 0;
+
+            // Update call status to InProgress once media stream starts
+            try
+            {
+                await _callRepository.UpdateStatusAsync(callSid, "in-progress", cancellationToken);
+                _logger.LogDebug("Updated call status to in-progress: CallSid={CallSid}", callSid);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to update call status to in-progress: CallSid={CallSid}", callSid);
+            }
 
             // Notify connected clients that the stream has started
             await _transcriptHub.BroadcastCallStatusUpdateAsync(

@@ -47,15 +47,15 @@ public class TranscriptHubService : ITranscriptHub
                 "Broadcasting transcript update: CallSid={CallSid}, IsFinal={IsFinal}, Length={Length}",
                 callSid, isFinal, transcript.Length);
 
+            // Frontend expects (callSid, transcript, isFinal) on 'ReceiveTranscriptUpdate'
             await _hubContext.Clients
                 .Group(groupName)
-                .SendAsync("TranscriptUpdate", new
-                {
-                    CallSid = callSid,
-                    Transcript = transcript,
-                    IsFinal = isFinal,
-                    Timestamp = DateTime.UtcNow
-                }, cancellationToken);
+                .SendAsync(
+                    "ReceiveTranscriptUpdate",
+                    callSid,
+                    transcript,
+                    isFinal,
+                    cancellationToken);
 
             _logger.LogTrace(
                 "Successfully broadcast transcript update: CallSid={CallSid}",
@@ -89,14 +89,14 @@ public class TranscriptHubService : ITranscriptHub
                 "Broadcasting call status update: CallSid={CallSid}, Status={Status}",
                 callSid, status);
 
+            // Frontend expects (callSid, status) on 'ReceiveCallStatusUpdate'
             await _hubContext.Clients
                 .Group(groupName)
-                .SendAsync("CallStatusUpdate", new
-                {
-                    CallSid = callSid,
-                    Status = status,
-                    Timestamp = DateTime.UtcNow
-                }, cancellationToken);
+                .SendAsync(
+                    "ReceiveCallStatusUpdate",
+                    callSid,
+                    status,
+                    cancellationToken);
         }
         catch (Exception ex)
         {
@@ -128,16 +128,16 @@ public class TranscriptHubService : ITranscriptHub
                 "Broadcasting location update: CallSid={CallSid}, Lat={Latitude}, Lng={Longitude}, Address={Address}",
                 callSid, latitude, longitude, address);
 
+            // Frontend expects (callSid, latitude, longitude, address) on 'ReceiveLocationUpdate'
             await _hubContext.Clients
                 .Group(groupName)
-                .SendAsync("LocationUpdate", new
-                {
-                    CallSid = callSid,
-                    Latitude = latitude,
-                    Longitude = longitude,
-                    Address = address,
-                    Timestamp = DateTime.UtcNow
-                }, cancellationToken);
+                .SendAsync(
+                    "ReceiveLocationUpdate",
+                    callSid,
+                    latitude,
+                    longitude,
+                    address,
+                    cancellationToken);
         }
         catch (Exception ex)
         {
@@ -169,15 +169,15 @@ public class TranscriptHubService : ITranscriptHub
 
             var groupName = GetCallGroup(callSid);
 
+            // Frontend expects (callSid, summary, keyFindings) on 'ReceiveSummaryUpdate'
             await _hubContext.Clients
                 .Group(groupName)
-                .SendAsync("SummaryUpdate", new
-                {
-                    CallSid = callSid,
-                    Summary = summary,
-                    KeyFindings = keyFindings ?? Array.Empty<string>(),
-                    Timestamp = DateTime.UtcNow
-                }, cancellationToken);
+                .SendAsync(
+                    "ReceiveSummaryUpdate",
+                    callSid,
+                    summary,
+                    keyFindings ?? Array.Empty<string>(),
+                    cancellationToken);
         }
         catch (Exception ex)
         {
