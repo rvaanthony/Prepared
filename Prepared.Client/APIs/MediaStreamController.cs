@@ -29,14 +29,19 @@ public class MediaStreamController : ControllerBase
     {
         try
         {
+            _logger.LogInformation(
+                "Media stream webhook received. Method: {Method}, Path: {Path}, HasForm: {HasForm}, FormKeys: {FormKeys}",
+                Request.Method, Request.Path, Request.HasFormContentType, 
+                Request.HasFormContentType ? string.Join(", ", Request.Form.Keys) : "none");
+
             var streamSid = Request.Form["StreamSid"].ToString();
             var callSid = Request.Form["CallSid"].ToString();
             var eventType = Request.Form["Event"].ToString();
             var mediaPayload = Request.Form["MediaPayload"].ToString();
 
-            _logger.LogDebug(
-                "Received media stream event: StreamSid={StreamSid}, CallSid={CallSid}, Event={Event}",
-                streamSid, callSid, eventType);
+            _logger.LogInformation(
+                "Received media stream event: StreamSid={StreamSid}, CallSid={CallSid}, Event={Event}, HasPayload={HasPayload}",
+                streamSid, callSid, eventType, !string.IsNullOrEmpty(mediaPayload));
 
             switch (eventType?.ToLowerInvariant())
             {

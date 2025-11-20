@@ -81,10 +81,14 @@ public class TwilioService : ITwilioService
             // For now, we'll directly start the media stream
             
             // Start media stream for real-time audio processing
+            // Ensure the webhook URL doesn't have a trailing slash
+            var baseUrl = _webhookUrl.TrimEnd('/');
+            var mediaStreamUrl = $"{baseUrl}/api/twilio/media-stream";
+            
             var start = new Start();
             var stream = new Stream
             {
-                Url = $"{_webhookUrl}/api/twilio/media-stream",
+                Url = mediaStreamUrl,
                 Name = callInfo.CallSid // Use CallSid as stream identifier
             };
             start.Append(stream);
@@ -102,8 +106,8 @@ public class TwilioService : ITwilioService
             var twiml = response.ToString();
             
             _logger.LogInformation(
-                "Generated TwiML response for call: CallSid={CallSid}",
-                callInfo.CallSid);
+                "Generated TwiML response for call: CallSid={CallSid}, TwiML length: {Length}, MediaStream URL: {StreamUrl}",
+                callInfo.CallSid, twiml.Length, mediaStreamUrl);
 
             return await System.Threading.Tasks.Task.FromResult(twiml);
         }
