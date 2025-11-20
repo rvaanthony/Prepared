@@ -12,11 +12,11 @@ public class MediaStreamOptions
     /// <summary>
     /// Minimum audio buffer size in seconds before sending to transcription service.
     /// At 8kHz μ-law, 1 second = ~8000 bytes.
-    /// Recommended: 2-4 seconds for better Whisper transcription accuracy.
-    /// Default: 3.0 seconds provides optimal balance between latency and accuracy.
+    /// Recommended: 3-5 seconds for better Whisper transcription accuracy.
+    /// Default: 4.0 seconds captures complete sentences while maintaining real-time feel.
     /// </summary>
     [Range(0.5, 10.0, ErrorMessage = "AudioBufferSeconds must be between 0.5 and 10.0")]
-    public double AudioBufferSeconds { get; set; } = 3.0;
+    public double AudioBufferSeconds { get; set; } = 4.0;
 
     /// <summary>
     /// Silence detection threshold (0.0 to 1.0).
