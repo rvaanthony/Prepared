@@ -48,8 +48,19 @@ public class TwilioService : ITwilioService
             ?? throw new InvalidOperationException("Twilio:AccountSid configuration is required");
         
         TwilioClient.Init(username: keySid, password: keySecret, accountSid: accountSid);
-        _authToken = keySecret; // Use secret for webhook validation
-        _logger.LogInformation("TwilioClient initialized with API Key authentication");
+        
+        // Try Auth Token first, fall back to API key secret if not configured
+        // Note: Twilio typically signs webhooks with Auth Token, but some configurations may use API key secret
+        _authToken = _configuration["Twilio:AuthToken"] ?? keySecret;
+        
+        if (!string.IsNullOrEmpty(_configuration["Twilio:AuthToken"]))
+        {
+            _logger.LogInformation("TwilioClient initialized with API Key authentication, using Auth Token for webhook validation");
+        }
+        else
+        {
+            _logger.LogInformation("TwilioClient initialized with API Key authentication, using API Key Secret for webhook validation");
+        }
     }
 
     public async Task<string> HandleIncomingCallAsync(CallInfo callInfo, CancellationToken cancellationToken = default)
@@ -174,6 +185,12 @@ public class TwilioService : ITwilioService
                 return false;
             }
 
+            if (string.IsNullOrWhiteSpace(_authToken))
+            {
+                _logger.LogError("Webhook signature validation failed: Auth Token is not configured");
+                return false;
+            }
+
             // Use Twilio's request validator from Twilio.Security
             var validator = new RequestValidator(_authToken);
             var isValid = validator.Validate(url, parameters, signature);
@@ -181,17 +198,26 @@ public class TwilioService : ITwilioService
             if (!isValid)
             {
                 _logger.LogWarning(
-                    "Webhook signature validation failed for URL: {Url}",
-                    url);
+                    "Webhook signature validation failed for URL: {Url}. Parameters count: {ParamCount}",
+                    url, parameters?.Count ?? 0);
+            }
+            else
+            {
+                _logger.LogDebug("Webhook signature validation succeeded for URL: {Url}", url);
             }
 
             return isValid;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error validating webhook signature");
+            _logger.LogError(ex, "Error validating webhook signature for URL: {Url}", url);
             return false;
         }
+    }
+
+    public string GetWebhookBaseUrl()
+    {
+        return _webhookUrl;
     }
 
     private static CallStatus MapTwilioStatusToCallStatus(string twilioStatus)

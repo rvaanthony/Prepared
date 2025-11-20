@@ -35,19 +35,36 @@ public class TwilioWebhookController : TwilioController
         try
         {
             // Validate webhook signature for security
-            if (!Request.Headers.ContainsKey("X-Twilio-Signature"))
+            // Check for signature header (case-insensitive in ASP.NET Core)
+            if (!Request.Headers.TryGetValue("X-Twilio-Signature", out var signatureHeader) || 
+                string.IsNullOrWhiteSpace(signatureHeader.ToString()))
             {
-                _logger.LogWarning("Incoming call webhook missing signature header");
+                _logger.LogWarning(
+                    "Incoming call webhook missing signature header. Available headers: {Headers}",
+                    string.Join(", ", Request.Headers.Keys));
                 return Unauthorized();
             }
 
-            var signature = Request.Headers["X-Twilio-Signature"].ToString();
-            var url = $"{Request.Scheme}://{Request.Host}{Request.Path}{Request.QueryString}";
+            var signature = signatureHeader.ToString();
+            
+            // Use the configured webhook URL as the base, then append the specific endpoint path
+            // This ensures we use the exact URL that Twilio has configured
+            var webhookBaseUrl = _twilioService.GetWebhookBaseUrl().TrimEnd('/');
+            var endpointPath = Request.Path.Value?.TrimStart('/') ?? "api/twilio/incoming-call";
+            var queryString = Request.QueryString.HasValue ? Request.QueryString.Value : string.Empty;
+            var url = $"{webhookBaseUrl}/{endpointPath}{queryString}";
+            
             var parameters = Request.Form.ToDictionary(f => f.Key, f => f.Value.ToString());
+
+            _logger.LogInformation(
+                "Validating webhook signature. Configured base URL: {BaseUrl}, Constructed URL: {Url}, Path: {Path}, QueryString: {QueryString}, Signature present: {HasSignature}",
+                webhookBaseUrl, url, Request.Path, Request.QueryString, !string.IsNullOrEmpty(signature));
 
             if (!_twilioService.ValidateWebhookSignature(url, parameters, signature))
             {
-                _logger.LogWarning("Invalid webhook signature for incoming call");
+                _logger.LogWarning(
+                    "Invalid webhook signature for incoming call. URL: {Url}, Parameters: {ParamCount}, Signature: {SignaturePrefix}...",
+                    url, parameters?.Count ?? 0, signature?.Length > 10 ? signature.Substring(0, 10) : "empty");
                 return Unauthorized();
             }
 
@@ -94,19 +111,36 @@ public class TwilioWebhookController : TwilioController
         try
         {
             // Validate webhook signature
-            if (!Request.Headers.ContainsKey("X-Twilio-Signature"))
+            // Check for signature header (case-insensitive in ASP.NET Core)
+            if (!Request.Headers.TryGetValue("X-Twilio-Signature", out var signatureHeader) || 
+                string.IsNullOrWhiteSpace(signatureHeader.ToString()))
             {
-                _logger.LogWarning("Call status webhook missing signature header");
+                _logger.LogWarning(
+                    "Call status webhook missing signature header. Available headers: {Headers}",
+                    string.Join(", ", Request.Headers.Keys));
                 return Unauthorized();
             }
 
-            var signature = Request.Headers["X-Twilio-Signature"].ToString();
-            var url = $"{Request.Scheme}://{Request.Host}{Request.Path}{Request.QueryString}";
+            var signature = signatureHeader.ToString();
+            
+            // Use the configured webhook URL as the base, then append the specific endpoint path
+            // This ensures we use the exact URL that Twilio has configured
+            var webhookBaseUrl = _twilioService.GetWebhookBaseUrl().TrimEnd('/');
+            var endpointPath = Request.Path.Value?.TrimStart('/') ?? "api/twilio/call-status";
+            var queryString = Request.QueryString.HasValue ? Request.QueryString.Value : string.Empty;
+            var url = $"{webhookBaseUrl}/{endpointPath}{queryString}";
+            
             var parameters = Request.Form.ToDictionary(f => f.Key, f => f.Value.ToString());
+
+            _logger.LogInformation(
+                "Validating webhook signature. Configured base URL: {BaseUrl}, Constructed URL: {Url}, Path: {Path}, QueryString: {QueryString}, Signature present: {HasSignature}",
+                webhookBaseUrl, url, Request.Path, Request.QueryString, !string.IsNullOrEmpty(signature));
 
             if (!_twilioService.ValidateWebhookSignature(url, parameters, signature))
             {
-                _logger.LogWarning("Invalid webhook signature for call status update");
+                _logger.LogWarning(
+                    "Invalid webhook signature for call status update. URL: {Url}, Parameters: {ParamCount}, Signature: {SignaturePrefix}...",
+                    url, parameters?.Count ?? 0, signature?.Length > 10 ? signature.Substring(0, 10) : "empty");
                 return Unauthorized();
             }
 

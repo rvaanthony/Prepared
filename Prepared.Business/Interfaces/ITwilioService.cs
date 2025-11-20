@@ -26,10 +26,16 @@ public interface ITwilioService
     /// <summary>
     /// Validates a Twilio webhook request signature
     /// </summary>
-    /// <param name="url">The webhook URL</param>
+    /// <param name="url">The webhook URL (should match exactly what's configured in Twilio)</param>
     /// <param name="parameters">The request parameters</param>
     /// <param name="signature">The signature to validate</param>
     /// <returns>True if the signature is valid</returns>
     bool ValidateWebhookSignature(string url, Dictionary<string, string> parameters, string signature);
+    
+    /// <summary>
+    /// Gets the configured webhook base URL
+    /// </summary>
+    /// <returns>The webhook base URL</returns>
+    string GetWebhookBaseUrl();
 }
 
