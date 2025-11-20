@@ -49,18 +49,11 @@ public class TwilioService : ITwilioService
         
         TwilioClient.Init(username: keySid, password: keySecret, accountSid: accountSid);
         
-        // Try Auth Token first, fall back to API key secret if not configured
-        // Note: Twilio typically signs webhooks with Auth Token, but some configurations may use API key secret
-        _authToken = _configuration["Twilio:AuthToken"] ?? keySecret;
+        // Use Auth Token for webhook validation (required - Twilio signs webhooks with Auth Token)
+        _authToken = _configuration["Twilio:AuthToken"] 
+            ?? throw new InvalidOperationException("Twilio:AuthToken configuration is required for webhook validation");
         
-        if (!string.IsNullOrEmpty(_configuration["Twilio:AuthToken"]))
-        {
-            _logger.LogInformation("TwilioClient initialized with API Key authentication, using Auth Token for webhook validation");
-        }
-        else
-        {
-            _logger.LogInformation("TwilioClient initialized with API Key authentication, using API Key Secret for webhook validation");
-        }
+        _logger.LogInformation("TwilioClient initialized with API Key authentication, using Auth Token for webhook validation");
     }
 
     public async Task<string> HandleIncomingCallAsync(CallInfo callInfo, CancellationToken cancellationToken = default)
@@ -179,6 +172,14 @@ public class TwilioService : ITwilioService
     {
         try
         {
+            // Check if validation is disabled (for debugging only - remove in production!)
+            var disableValidation = _configuration.GetValue<bool>("Twilio:DisableWebhookValidation", false);
+            if (disableValidation)
+            {
+                _logger.LogWarning("Webhook signature validation is DISABLED - this should only be used for debugging!");
+                return true;
+            }
+
             if (string.IsNullOrWhiteSpace(signature))
             {
                 _logger.LogWarning("Webhook signature validation failed: signature is empty");
@@ -191,22 +192,57 @@ public class TwilioService : ITwilioService
                 return false;
             }
 
-            // Use Twilio's request validator from Twilio.Security
+            // Try the provided URL first
             var validator = new RequestValidator(_authToken);
             var isValid = validator.Validate(url, parameters, signature);
 
-            if (!isValid)
+            if (isValid)
             {
-                _logger.LogWarning(
-                    "Webhook signature validation failed for URL: {Url}. Parameters count: {ParamCount}",
+                _logger.LogInformation(
+                    "Webhook signature validation succeeded for URL: {Url}. Parameters count: {ParamCount}",
                     url, parameters?.Count ?? 0);
+                return true;
+            }
+
+            // If validation failed, try URL variations that might match what Twilio configured
+            var urlVariations = new List<string> { url };
+            
+            // Try with trailing slash
+            if (!url.EndsWith("/"))
+            {
+                urlVariations.Add(url + "/");
             }
             else
             {
-                _logger.LogDebug("Webhook signature validation succeeded for URL: {Url}", url);
+                urlVariations.Add(url.TrimEnd('/'));
             }
 
-            return isValid;
+            // Try without query string if present
+            if (url.Contains("?"))
+            {
+                urlVariations.Add(url.Split('?')[0]);
+            }
+
+            _logger.LogWarning(
+                "Initial validation failed for URL: {Url}. Trying {Count} URL variations. Parameters count: {ParamCount}",
+                url, urlVariations.Count, parameters?.Count ?? 0);
+
+            foreach (var urlVariation in urlVariations.Skip(1))
+            {
+                isValid = validator.Validate(urlVariation, parameters, signature);
+                if (isValid)
+                {
+                    _logger.LogInformation(
+                        "Webhook signature validation succeeded with URL variation: {Url}. Original: {OriginalUrl}",
+                        urlVariation, url);
+                    return true;
+                }
+            }
+
+            _logger.LogWarning(
+                "Webhook signature validation failed for all URL variations. Original URL: {Url}, Parameters count: {ParamCount}",
+                url, parameters?.Count ?? 0);
+            return false;
         }
         catch (Exception ex)
         {
