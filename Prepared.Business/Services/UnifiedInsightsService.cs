@@ -128,17 +128,37 @@ Return ONLY valid JSON with this EXACT structure:
   ""key_findings"": [""finding 1"", ""finding 2"", ""finding 3""]
 }";
 
-            var payload = new
+            // Check if using reasoning model (o1, o1-mini) - they don't support temperature
+            var isReasoningModel = _options.DefaultModel.StartsWith("o1", StringComparison.OrdinalIgnoreCase);
+            
+            object payload;
+            if (isReasoningModel)
             {
-                model = _options.DefaultModel,
-                temperature = 0.0, // Zero temperature for consistent extraction
-                response_format = new { type = "json_object" },
-                messages = new[]
+                payload = new
                 {
-                    new { role = "system", content = systemPrompt },
-                    new { role = "user", content = $"Extract insights from this 911 call transcript:\n\n{transcript}" }
-                }
-            };
+                    model = _options.DefaultModel,
+                    response_format = new { type = "json_object" },
+                    messages = new[]
+                    {
+                        new { role = "system", content = systemPrompt },
+                        new { role = "user", content = $"Extract insights from this 911 call transcript:\n\n{transcript}" }
+                    }
+                };
+            }
+            else
+            {
+                payload = new
+                {
+                    model = _options.DefaultModel,
+                    temperature = 0.1, // Low temperature for consistent extraction (not supported by o1 models)
+                    response_format = new { type = "json_object" },
+                    messages = new[]
+                    {
+                        new { role = "system", content = systemPrompt },
+                        new { role = "user", content = $"Extract insights from this 911 call transcript:\n\n{transcript}" }
+                    }
+                };
+            }
 
             var response = await _httpClient.PostAsJsonAsync("chat/completions", payload, SerializerOptions, cancellationToken);
             if (!response.IsSuccessStatusCode)

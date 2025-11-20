@@ -71,17 +71,37 @@ If NO location found, return:
   ""confidence"": 0.0
 }";
 
-            var payload = new
+            var model = _options.LocationModel ?? _options.DefaultModel;
+            var isReasoningModel = model.StartsWith("o1", StringComparison.OrdinalIgnoreCase);
+            
+            object payload;
+            if (isReasoningModel)
             {
-                model = _options.LocationModel ?? _options.DefaultModel,
-                temperature = 0.0, // Zero temperature for consistent extraction
-                response_format = new { type = "json_object" },
-                messages = new[]
+                payload = new
                 {
-                    new { role = "system", content = systemPrompt },
-                    new { role = "user", content = $"Extract location from this transcript:\n\n{transcript}" }
-                }
-            };
+                    model,
+                    response_format = new { type = "json_object" },
+                    messages = new[]
+                    {
+                        new { role = "system", content = systemPrompt },
+                        new { role = "user", content = $"Extract location from this transcript:\n\n{transcript}" }
+                    }
+                };
+            }
+            else
+            {
+                payload = new
+                {
+                    model,
+                    temperature = 0.1, // Low temperature for consistent extraction (not supported by o1 models)
+                    response_format = new { type = "json_object" },
+                    messages = new[]
+                    {
+                        new { role = "system", content = systemPrompt },
+                        new { role = "user", content = $"Extract location from this transcript:\n\n{transcript}" }
+                    }
+                };
+            }
 
             var response = await _httpClient.PostAsJsonAsync("chat/completions", payload, SerializerOptions, cancellationToken);
             if (!response.IsSuccessStatusCode)
@@ -161,16 +181,34 @@ For example:
 - ""330 West 20th Avenue, San Mateo, California"" should return coordinates near San Mateo
 - ""Main Street"" without a city should return null values";
 
-            var payload = new
+            var isReasoningModel = _options.DefaultModel.StartsWith("o1", StringComparison.OrdinalIgnoreCase);
+            
+            object payload;
+            if (isReasoningModel)
             {
-                model = _options.DefaultModel,
-                temperature = 0.0,
-                response_format = new { type = "json_object" },
-                messages = new[]
+                payload = new
                 {
-                    new { role = "user", content = geocodePrompt }
-                }
-            };
+                    model = _options.DefaultModel,
+                    response_format = new { type = "json_object" },
+                    messages = new[]
+                    {
+                        new { role = "user", content = geocodePrompt }
+                    }
+                };
+            }
+            else
+            {
+                payload = new
+                {
+                    model = _options.DefaultModel,
+                    temperature = 0.1,
+                    response_format = new { type = "json_object" },
+                    messages = new[]
+                    {
+                        new { role = "user", content = geocodePrompt }
+                    }
+                };
+            }
 
             var response = await _httpClient.PostAsJsonAsync("chat/completions", payload, SerializerOptions, cancellationToken);
             if (!response.IsSuccessStatusCode)

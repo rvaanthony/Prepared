@@ -42,18 +42,35 @@ public class OpenAiSummarizationService : ISummarizationService
 
         try
         {
-            var payload = new
+            var model = _options.SummarizationModel ?? _options.DefaultModel;
+            var isReasoningModel = model.StartsWith("o1", StringComparison.OrdinalIgnoreCase);
+            
+            object payload;
+            if (isReasoningModel)
             {
-                model = _options.SummarizationModel ?? _options.DefaultModel,
-                temperature = 0.2,
-                reasoning_effort = "minimal", // GPT-5: Use minimal reasoning for faster summarization
-                verbosity = "medium", // GPT-5: Control response length
-                messages = new[]
+                payload = new
                 {
-                    new { role = "system", content = "You are a senior incident dispatcher assistant. Summarize emergency call transcripts with clear bullet points." },
-                    new { role = "user", content = transcript }
-                }
-            };
+                    model,
+                    messages = new[]
+                    {
+                        new { role = "system", content = "You are a senior incident dispatcher assistant. Summarize emergency call transcripts with clear bullet points." },
+                        new { role = "user", content = transcript }
+                    }
+                };
+            }
+            else
+            {
+                payload = new
+                {
+                    model,
+                    temperature = 0.2,
+                    messages = new[]
+                    {
+                        new { role = "system", content = "You are a senior incident dispatcher assistant. Summarize emergency call transcripts with clear bullet points." },
+                        new { role = "user", content = transcript }
+                    }
+                };
+            }
 
             var response = await _httpClient.PostAsJsonAsync("chat/completions", payload, SerializerOptions, cancellationToken);
             if (!response.IsSuccessStatusCode)
