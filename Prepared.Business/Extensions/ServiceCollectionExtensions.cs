@@ -32,6 +32,7 @@ public static class ServiceCollectionExtensions
         // Configure and validate options
         services.Configure<WhisperOptions>(configuration.GetSection(WhisperOptions.SectionName));
         services.Configure<OpenAiOptions>(configuration.GetSection(OpenAiOptions.SectionName));
+        services.Configure<MediaStreamOptions>(configuration.GetSection(MediaStreamOptions.SectionName));
 
         // Validate options at startup (fail fast if misconfigured)
         services.AddOptions<WhisperOptions>()
@@ -52,6 +53,16 @@ public static class ServiceCollectionExtensions
                 var results = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
                 return System.ComponentModel.DataAnnotations.Validator.TryValidateObject(options, context, results, true);
             }, "OpenAI configuration validation failed")
+            .ValidateOnStart();
+
+        services.AddOptions<MediaStreamOptions>()
+            .Bind(configuration.GetSection(MediaStreamOptions.SectionName))
+            .Validate(options =>
+            {
+                var context = new System.ComponentModel.DataAnnotations.ValidationContext(options);
+                var results = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
+                return System.ComponentModel.DataAnnotations.Validator.TryValidateObject(options, context, results, true);
+            }, "MediaStream configuration validation failed")
             .ValidateOnStart();
 
         // Register HTTP clients with explicit timeouts and proper configuration
