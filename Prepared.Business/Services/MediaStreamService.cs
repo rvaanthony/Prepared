@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Prepared.Business.Interfaces;
@@ -314,13 +315,57 @@ public class MediaStreamService : IMediaStreamService
 
     private void AppendTranscript(string callSid, string text)
     {
+        // Filter out common greeting phrases that might be picked up from our TwiML greeting
+        var filteredText = FilterGreetingPhrases(text);
+        
+        if (string.IsNullOrWhiteSpace(filteredText))
+        {
+            _logger.LogDebug("Filtered out greeting phrase from transcript: CallSid={CallSid}, Original={Original}", callSid, text);
+            return;
+        }
+
         if (!_transcriptBuffers.TryGetValue(callSid, out var segments))
         {
             segments = new List<string>();
             _transcriptBuffers[callSid] = segments;
         }
 
-        segments.Add(text);
+        segments.Add(filteredText);
+    }
+
+    /// <summary>
+    /// Filters out common greeting phrases that might be picked up from TwiML audio.
+    /// </summary>
+    private static string FilterGreetingPhrases(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return text;
+
+        var filtered = text;
+        
+        // Common greeting phrases to filter (case-insensitive)
+        var greetingPhrases = new[]
+        {
+            "thank you for calling",
+            "thank you for watching",
+            "your call is being processed",
+            "your call is being transcribed",
+            "please hold",
+            "please wait"
+        };
+
+        foreach (var phrase in greetingPhrases)
+        {
+            // Remove phrase if it appears at the start (with optional punctuation)
+            var pattern = $"^{Regex.Escape(phrase)}[\\s.,!?]*";
+            filtered = Regex.Replace(
+                filtered, 
+                pattern, 
+                "", 
+                RegexOptions.IgnoreCase);
+        }
+
+        return filtered.Trim();
     }
 
     /// <summary>
