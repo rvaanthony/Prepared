@@ -22,6 +22,7 @@ public class MediaStreamService : IMediaStreamService
     private readonly Dictionary<string, string> _streamToCallMapping = new(); // Maps StreamSid to CallSid
     private readonly Dictionary<string, List<string>> _transcriptBuffers = new(); // CallSid => transcript segments
     private readonly Dictionary<string, int> _transcriptSequenceNumbers = new(); // CallSid => sequence number
+    private readonly Dictionary<string, List<byte>> _audioBuffers = new(); // StreamSid => buffered mu-law audio
 
     public MediaStreamService(
         ILogger<MediaStreamService> logger,
@@ -55,6 +56,7 @@ public class MediaStreamService : IMediaStreamService
 
             _activeStreams[streamSid] = DateTime.UtcNow;
             _streamToCallMapping[streamSid] = callSid;
+            _audioBuffers[streamSid] = new List<byte>();
 
             // Update call record with stream information
             try
@@ -110,12 +112,34 @@ public class MediaStreamService : IMediaStreamService
                     "Processing media data: StreamSid={StreamSid}, PayloadSize={Size} bytes",
                     streamSid, audioBytes.Length);
 
+                // Buffer audio so we don't send sub-0.1s chunks to OpenAI
+                if (!_audioBuffers.TryGetValue(streamSid, out var audioBuffer))
+                {
+                    audioBuffer = new List<byte>();
+                    _audioBuffers[streamSid] = audioBuffer;
+                }
+
+                audioBuffer.AddRange(audioBytes);
+
+                // At 8kHz mu-law, 0.1s ≈ 800 bytes. Use a slightly larger threshold to be safe.
+                const int minBytesForTranscription = 1600; // ~0.2 seconds of audio
+                if (audioBuffer.Count < minBytesForTranscription)
+                {
+                    _logger.LogDebug(
+                        "Buffered media data below threshold: StreamSid={StreamSid}, BufferedSize={Size} bytes",
+                        streamSid, audioBuffer.Count);
+                    return;
+                }
+
+                var bufferedAudio = audioBuffer.ToArray();
+                audioBuffer.Clear();
+
                 if (_streamToCallMapping.TryGetValue(streamSid, out var callSid))
                 {
                     var transcriptionResult = await _transcriptionService.TranscribeAsync(
                         callSid,
                         streamSid,
-                        audioBytes,
+                        bufferedAudio,
                         isFinal: false,
                         cancellationToken);
 
@@ -199,6 +223,7 @@ public class MediaStreamService : IMediaStreamService
             // Clean up mappings
             _streamToCallMapping.Remove(streamSid);
             _transcriptSequenceNumbers.Remove(callSid);
+            _audioBuffers.Remove(streamSid);
             await GenerateInsightsAsync(callSid, cancellationToken);
         }
         catch (Exception ex)
