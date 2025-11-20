@@ -110,7 +110,6 @@ public class WhisperTranscriptionService : ITranscriptionService
 
         content.Add(new StringContent(_options.Model), "model");
         content.Add(new StringContent(_options.Temperature.ToString("0.0")), "temperature");
-        content.Add(new StringContent(isFinal ? "true" : "false"), "response_format"); // Using response_format to flag finality (custom usage)
 
         return content;
     }
