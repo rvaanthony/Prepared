@@ -76,12 +76,7 @@ public class TwilioService : ITwilioService
             }
 
             var response = new VoiceResponse();
-
-            // Create a gather verb to collect user input (optional)
-            // For now, we'll directly start the media stream
             
-            // Start media stream for real-time audio processing
-            // Ensure the webhook URL doesn't have a trailing slash
             var baseUrl = _webhookUrl.TrimEnd('/');
             var mediaStreamUrl = $"{baseUrl}/api/twilio/media-stream";
             
@@ -108,6 +103,9 @@ public class TwilioService : ITwilioService
             _logger.LogInformation(
                 "Generated TwiML response for call: CallSid={CallSid}, TwiML length: {Length}, MediaStream URL: {StreamUrl}",
                 callInfo.CallSid, twiml.Length, mediaStreamUrl);
+            
+            // Log the actual TwiML for debugging
+            _logger.LogInformation("Generated TwiML XML: {TwiML}", twiml);
 
             return await System.Threading.Tasks.Task.FromResult(twiml);
         }
