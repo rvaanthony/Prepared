@@ -75,6 +75,21 @@ public class TwilioService : ITwilioService
                 _logger.LogWarning(ex, "Failed to save call record, continuing with call processing: CallSid={CallSid}", callInfo.CallSid);
             }
 
+            // Broadcast initial call status to all connected clients so dashboards can discover the new call
+            try
+            {
+                await _transcriptHub.BroadcastCallStatusUpdateAsync(
+                    callInfo.CallSid,
+                    callInfo.Status.ToString().ToLowerInvariant(),
+                    cancellationToken);
+                _logger.LogDebug("Broadcast initial call status: CallSid={CallSid}, Status={Status}", 
+                    callInfo.CallSid, callInfo.Status);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to broadcast initial call status: CallSid={CallSid}", callInfo.CallSid);
+            }
+
             var response = new VoiceResponse();
             // Note: Answer verb is implicit for incoming calls that play audio
             // The <Start><Stream> will auto-answer the call before starting the stream

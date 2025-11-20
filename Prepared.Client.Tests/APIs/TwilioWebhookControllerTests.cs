@@ -21,6 +21,10 @@ public class TwilioWebhookControllerTests
     {
         _twilioServiceMock = new Mock<ITwilioService>();
         _loggerMock = new Mock<ILogger<TwilioWebhookController>>();
+        
+        // Setup GetWebhookBaseUrl that is called by the controller for signature validation
+        _twilioServiceMock.Setup(x => x.GetWebhookBaseUrl()).Returns("https://example.com");
+        
         _controller = new TwilioWebhookController(_twilioServiceMock.Object, _loggerMock.Object);
         
         SetupControllerContext();

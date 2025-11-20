@@ -31,6 +31,11 @@ public class TwilioServiceTests
         _configurationMock.Setup(c => c["Twilio:KeySid"]).Returns("SK123456789");
         _configurationMock.Setup(c => c["Twilio:SecretKey"]).Returns("test-secret-key");
         _configurationMock.Setup(c => c["Twilio:AuthToken"]).Returns("test-auth-token"); // Required for webhook validation
+        
+        // Setup the GetSection mock for GetValue<bool> calls
+        var mockSection = new Mock<IConfigurationSection>();
+        mockSection.Setup(x => x.Value).Returns((string?)null);
+        _configurationMock.Setup(c => c.GetSection(It.IsAny<string>())).Returns(mockSection.Object);
 
         _service = new TwilioService(_loggerMock.Object, _configurationMock.Object, _transcriptHubMock.Object, _callRepositoryMock.Object);
     }

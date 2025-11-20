@@ -82,21 +82,47 @@ public class TranscriptHubService : ITranscriptHub
                 _logger.LogWarning("Attempted to broadcast status update with empty CallSid");
                 return;
             }
-
-            var groupName = GetCallGroup(callSid);
             
             _logger.LogDebug(
                 "Broadcasting call status update: CallSid={CallSid}, Status={Status}",
                 callSid, status);
 
-            // Frontend expects (callSid, status) on 'ReceiveCallStatusUpdate'
-            await _hubContext.Clients
-                .Group(groupName)
-                .SendAsync(
-                    "ReceiveCallStatusUpdate",
-                    callSid,
-                    status,
-                    cancellationToken);
+            // For new call notifications (ringing, stream_started, in-progress), 
+            // broadcast to ALL clients so dashboards can discover new calls.
+            // Clients will then join the call-specific group for subsequent updates.
+            var isNewCallNotification = status.Equals("ringing", StringComparison.OrdinalIgnoreCase) ||
+                                       status.Equals("stream_started", StringComparison.OrdinalIgnoreCase) ||
+                                       status.Equals("in-progress", StringComparison.OrdinalIgnoreCase) ||
+                                       status.Equals("initiated", StringComparison.OrdinalIgnoreCase);
+
+            if (isNewCallNotification)
+            {
+                // Broadcast to ALL connected clients for call discovery
+                _logger.LogInformation(
+                    "Broadcasting new call notification to all clients: CallSid={CallSid}, Status={Status}",
+                    callSid, status);
+
+                await _hubContext.Clients
+                    .All
+                    .SendAsync(
+                        "ReceiveCallStatusUpdate",
+                        callSid,
+                        status,
+                        cancellationToken);
+            }
+            else
+            {
+                // For other status updates, only send to the call-specific group
+                var groupName = GetCallGroup(callSid);
+                
+                await _hubContext.Clients
+                    .Group(groupName)
+                    .SendAsync(
+                        "ReceiveCallStatusUpdate",
+                        callSid,
+                        status,
+                        cancellationToken);
+            }
         }
         catch (Exception ex)
         {
