@@ -299,22 +299,24 @@ public class MediaStreamServiceTests
                 Text = "The caller reports a fire near 123 Main Street.",
                 IsFinal = false
             });
-        _summarizationServiceMock
-            .Setup(x => x.SummarizeAsync(callSid, It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new TranscriptSummary
+        _unifiedInsightsServiceMock
+            .Setup(x => x.ExtractInsightsAsync(callSid, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UnifiedInsightsResult
             {
                 CallSid = callSid,
-                Summary = "Fire near 123 Main Street",
-                KeyFindings = new[] { "Structure fire", "Evacuation in progress" }
-            });
-        _locationExtractionServiceMock
-            .Setup(x => x.ExtractAsync(callSid, It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new LocationExtractionResult
-            {
-                CallSid = callSid,
-                Latitude = 37.7749,
-                Longitude = -122.4194,
-                FormattedAddress = "123 Main Street, San Francisco, CA"
+                Summary = new TranscriptSummary
+                {
+                    CallSid = callSid,
+                    Summary = "Fire near 123 Main Street",
+                    KeyFindings = new[] { "Structure fire", "Evacuation in progress" }
+                },
+                Location = new LocationExtractionResult
+                {
+                    CallSid = callSid,
+                    Latitude = 37.7749,
+                    Longitude = -122.4194,
+                    FormattedAddress = "123 Main Street, San Francisco, CA"
+                }
             });
 
         // Send enough audio data to trigger transcription (32000+ bytes for 4-second buffer)
@@ -325,33 +327,30 @@ public class MediaStreamServiceTests
         await _service.HandleStreamStopAsync(streamSid, callSid);
 
         // Assert
-        _summarizationServiceMock.Verify(
-            x => x.SummarizeAsync(callSid, It.IsAny<string>(), It.IsAny<CancellationToken>()),
-            Times.Once);
-
+        // ExtractInsightsAsync may be called multiple times (real-time + final), so we verify results instead
+        // The important thing is that insights are saved and broadcast, which we verify below
+        
+        // Summary may be saved/broadcast multiple times (real-time + final), verify at least once
         _summaryRepositoryMock.Verify(
             x => x.UpsertAsync(
-                It.Is<TranscriptSummary>(s => s.CallSid == callSid),
+                It.Is<TranscriptSummary>(s => s.CallSid == callSid && s.Summary == "Fire near 123 Main Street"),
                 It.IsAny<CancellationToken>()),
-            Times.Once);
+            Times.AtLeastOnce);
         
         _transcriptHubMock.Verify(
             x => x.BroadcastSummaryUpdateAsync(
                 callSid,
-                It.IsAny<string>(),
-                It.IsAny<IEnumerable<string>>(),
+                "Fire near 123 Main Street",
+                It.Is<IEnumerable<string>>(kf => kf.Contains("Structure fire") && kf.Contains("Evacuation in progress")),
                 It.IsAny<CancellationToken>()),
-            Times.Once);
+            Times.AtLeastOnce);
 
-        _locationExtractionServiceMock.Verify(
-            x => x.ExtractAsync(callSid, It.IsAny<string>(), It.IsAny<CancellationToken>()),
-            Times.Once);
-
+        // Location may be saved/broadcast multiple times (real-time + final), verify at least once
         _locationRepositoryMock.Verify(
             x => x.UpsertAsync(
                 It.Is<LocationExtractionResult>(l => l.CallSid == callSid),
                 It.IsAny<CancellationToken>()),
-            Times.Once);
+            Times.AtLeastOnce);
 
         _transcriptHubMock.Verify(
             x => x.BroadcastLocationUpdateAsync(
@@ -360,7 +359,7 @@ public class MediaStreamServiceTests
                 -122.4194,
                 "123 Main Street, San Francisco, CA",
                 It.IsAny<CancellationToken>()),
-            Times.Once);
+            Times.AtLeastOnce);
     }
 
     [Fact]
