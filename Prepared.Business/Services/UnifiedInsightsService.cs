@@ -13,7 +13,7 @@ namespace Prepared.Business.Services;
 /// Unified insights extraction service that extracts location, summary, and key findings in a single API call.
 /// This is more efficient and cost-effective than separate calls, and allows GPT to correlate information.
 /// </summary>
-public class UnifiedInsightsService
+public class UnifiedInsightsService : IUnifiedInsightsService
 {
     private readonly HttpClient _httpClient;
     private readonly OpenAiOptions _options;

@@ -57,7 +57,7 @@ public class TwilioWebhookController : TwilioController
             // Extract parameters - StringValues might have multiple values, take the first one
             var parameters = Request.Form.ToDictionary(
                 f => f.Key, 
-                f => f.Value.Count > 0 ? f.Value[0] : string.Empty);
+                f => f.Value.Count > 0 ? f.Value[0]! : string.Empty);
 
             _logger.LogInformation(
                 "Validating webhook signature. Configured base URL: {BaseUrl}, Constructed URL: {Url}, Path: {Path}, QueryString: {QueryString}, Signature present: {HasSignature}",
@@ -136,7 +136,7 @@ public class TwilioWebhookController : TwilioController
             // Extract parameters - StringValues might have multiple values, take the first one
             var parameters = Request.Form.ToDictionary(
                 f => f.Key, 
-                f => f.Value.Count > 0 ? f.Value[0] : string.Empty);
+                f => f.Value.Count > 0 ? f.Value[0]! : string.Empty);
 
             _logger.LogInformation(
                 "Validating webhook signature. Configured base URL: {BaseUrl}, Constructed URL: {Url}, Path: {Path}, QueryString: {QueryString}, Signature present: {HasSignature}",

@@ -85,7 +85,7 @@ public static class ServiceCollectionExtensions
         });
 
         // Register unified insights service for efficient single-call extraction
-        services.AddHttpClient<UnifiedInsightsService>((sp, client) =>
+        services.AddHttpClient<IUnifiedInsightsService, UnifiedInsightsService>((sp, client) =>
         {
             var options = sp.GetRequiredService<IOptions<OpenAiOptions>>().Value;
             client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
