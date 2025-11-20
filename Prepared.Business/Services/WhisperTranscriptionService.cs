@@ -95,7 +95,7 @@ public class WhisperTranscriptionService : ITranscriptionService
             return;
         }
 
-        _httpClient.BaseAddress = new Uri(_options.Endpoint.TrimEnd('/') + "/");
+        _httpClient.BaseAddress = new Uri(_options.Endpoint.TrimEnd('/'));
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _options.ApiKey);
     }
 
