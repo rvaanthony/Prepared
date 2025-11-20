@@ -30,6 +30,7 @@ public class ServiceCollectionExtensionsTests
                 { "Twilio:AccountSid", "AC123456789" },
                 { "Twilio:KeySid", "SK123456789" },
                 { "Twilio:SecretKey", "test_secret_key" },
+                { "Twilio:AuthToken", "test_auth_token" },
                 { "Twilio:WebhookUrl", "https://example.com" },
                 { "Whisper:ApiKey", "test_whisper_key" },
                 { "Whisper:Model", "whisper-1" },
@@ -38,7 +39,10 @@ public class ServiceCollectionExtensionsTests
                 { "OpenAI:ApiKey", "test_openai_key" },
                 { "OpenAI:Endpoint", "https://api.openai.com/v1/" },
                 { "OpenAI:DefaultModel", "gpt-4o-mini" },
-                { "OpenAI:TimeoutSeconds", "30" }
+                { "OpenAI:TimeoutSeconds", "30" },
+                { "MediaStream:AudioBufferSeconds", "3.0" },
+                { "MediaStream:SilenceThreshold", "0.9" },
+                { "MediaStream:SampleRate", "8000" }
             })
             .Build();
         services.AddSingleton<IConfiguration>(configuration); // Register IConfiguration
@@ -88,6 +92,7 @@ public class ServiceCollectionExtensionsTests
                 { "Twilio:AccountSid", "AC123456789" },
                 { "Twilio:KeySid", "SK123456789" },
                 { "Twilio:SecretKey", "test_secret_key" },
+                { "Twilio:AuthToken", "test_auth_token" },
                 { "Twilio:WebhookUrl", "https://example.com" },
                 { "Whisper:ApiKey", "test_whisper_key" },
                 { "Whisper:Model", "whisper-1" },
@@ -96,7 +101,10 @@ public class ServiceCollectionExtensionsTests
                 { "OpenAI:ApiKey", "test_openai_key" },
                 { "OpenAI:Endpoint", "https://api.openai.com/v1/" },
                 { "OpenAI:DefaultModel", "gpt-4o-mini" },
-                { "OpenAI:TimeoutSeconds", "30" }
+                { "OpenAI:TimeoutSeconds", "30" },
+                { "MediaStream:AudioBufferSeconds", "3.0" },
+                { "MediaStream:SilenceThreshold", "0.9" },
+                { "MediaStream:SampleRate", "8000" }
             })
             .Build();
         services.AddSingleton<IConfiguration>(configuration); // Register IConfiguration
@@ -160,6 +168,7 @@ public class ServiceCollectionExtensionsTests
                 { "Twilio:AccountSid", "AC123456789" },
                 { "Twilio:KeySid", "SK123456789" },
                 { "Twilio:SecretKey", "test_secret_key" },
+                { "Twilio:AuthToken", "test_auth_token" },
                 { "Twilio:WebhookUrl", "https://example.com" },
                 { "Whisper:ApiKey", "test_whisper_key" },
                 { "Whisper:Model", "whisper-1" },
@@ -168,7 +177,10 @@ public class ServiceCollectionExtensionsTests
                 { "OpenAI:ApiKey", "test_openai_key" },
                 { "OpenAI:Endpoint", "https://api.openai.com/v1/" },
                 { "OpenAI:DefaultModel", "gpt-4o-mini" },
-                { "OpenAI:TimeoutSeconds", "30" }
+                { "OpenAI:TimeoutSeconds", "30" },
+                { "MediaStream:AudioBufferSeconds", "3.0" },
+                { "MediaStream:SilenceThreshold", "0.9" },
+                { "MediaStream:SampleRate", "8000" }
             })
             .Build();
         services.AddSingleton<IConfiguration>(configuration); // Register IConfiguration

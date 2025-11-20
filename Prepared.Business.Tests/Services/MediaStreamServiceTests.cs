@@ -38,7 +38,7 @@ public class MediaStreamServiceTests
         var optionsMock = new Mock<IOptions<MediaStreamOptions>>();
         optionsMock.Setup(x => x.Value).Returns(new MediaStreamOptions
         {
-            AudioBufferSeconds = 2.0,
+            AudioBufferSeconds = 3.0, // 3 seconds = 24000 bytes at 8kHz μ-law
             SilenceThreshold = 0.9,
             SampleRate = 8000
         });
@@ -116,14 +116,18 @@ public class MediaStreamServiceTests
             Times.Once);
     }
 
+    /// <summary>
+    /// Verifies that media data is buffered and processed when the buffer threshold is reached.
+    /// Tests the complete flow: buffering → transcription → storage → SignalR broadcast.
+    /// </summary>
     [Fact]
-    public async Task ProcessMediaDataAsync_WithMediaEvent_ShouldProcessData()
+    public async Task ProcessMediaDataAsync_WhenBufferThresholdReached_ShouldTranscribeAndBroadcast()
     {
         // Arrange
         var streamSid = "MZ123456789";
-        var mediaPayload = Convert.ToBase64String(new byte[] { 1, 2, 3, 4, 5 });
-        var eventType = "media";
         var callSid = "CA123456789";
+        var mediaPayload = GenerateNonSilentAudioPayload(bytesCount: 24001); // Exceeds 3-second buffer (24000 bytes)
+        var eventType = "media";
 
         // First start the stream
         await _service.HandleStreamStartAsync(streamSid, callSid);
@@ -309,7 +313,9 @@ public class MediaStreamServiceTests
                 FormattedAddress = "123 Main Street, San Francisco, CA"
             });
 
-        await _service.ProcessMediaDataAsync(streamSid, Convert.ToBase64String(new byte[] { 1, 2, 3 }), "media");
+        // Send enough audio data to trigger transcription (24000+ bytes for 3-second buffer)
+        var mediaPayload = GenerateNonSilentAudioPayload(bytesCount: 24001);
+        await _service.ProcessMediaDataAsync(streamSid, mediaPayload, "media");
 
         // Act
         await _service.HandleStreamStopAsync(streamSid, callSid);
@@ -598,5 +604,172 @@ public class MediaStreamServiceTests
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Never);
     }
+
+    #region Test Helper Methods
+
+    /// <summary>
+    /// Generates a base64-encoded non-silent audio payload for testing.
+    /// Creates μ-law audio data that will not be filtered by silence detection.
+    /// </summary>
+    /// <param name="bytesCount">Number of bytes to generate (8kHz μ-law: 1 second ≈ 8000 bytes)</param>
+    /// <returns>Base64-encoded audio payload suitable for Twilio media streams</returns>
+    private static string GenerateNonSilentAudioPayload(int bytesCount)
+    {
+        var audioData = new byte[bytesCount];
+        for (int i = 0; i < audioData.Length; i++)
+        {
+            // Generate varied audio values that are clearly not silence
+            // μ-law silence is typically 0xFF (255) or 0x7F (127)
+            // Use values well below the silence threshold (< 253) to ensure detection as non-silent
+            audioData[i] = (byte)((i % 200) + 20); // Range: 20-219, clearly non-silent
+        }
+        return Convert.ToBase64String(audioData);
+    }
+
+    /// <summary>
+    /// Generates a base64-encoded silent audio payload for testing silence detection.
+    /// Creates μ-law audio data that should be filtered by silence detection.
+    /// </summary>
+    /// <param name="bytesCount">Number of bytes to generate</param>
+    /// <returns>Base64-encoded silent audio payload</returns>
+    private static string GenerateSilentAudioPayload(int bytesCount)
+    {
+        var audioData = new byte[bytesCount];
+        for (int i = 0; i < audioData.Length; i++)
+        {
+            // μ-law silence is 0xFF (255) or 0x7F (127)
+            audioData[i] = 0xFF; // Maximum silence value
+        }
+        return Convert.ToBase64String(audioData);
+    }
+
+    #endregion
+
+    #region Additional Edge Case Tests
+
+    /// <summary>
+    /// Verifies that audio data below the buffer threshold is not transcribed immediately.
+    /// This ensures we're properly buffering audio before sending to Whisper API.
+    /// </summary>
+    [Fact]
+    public async Task ProcessMediaDataAsync_WhenBelowBufferThreshold_ShouldNotTranscribe()
+    {
+        // Arrange
+        var streamSid = "MZ123456789";
+        var callSid = "CA123456789";
+        var insufficientAudio = GenerateNonSilentAudioPayload(bytesCount: 16000); // Only 2 seconds (threshold is 3 seconds)
+
+        await _service.HandleStreamStartAsync(streamSid, callSid);
+
+        // Act
+        await _service.ProcessMediaDataAsync(streamSid, insufficientAudio, "media");
+
+        // Assert - Should NOT call transcription service yet
+        _transcriptionServiceMock.Verify(
+            x => x.TranscribeAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<ReadOnlyMemory<byte>>(),
+                It.IsAny<bool>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    /// <summary>
+    /// Verifies that silent audio chunks are filtered out and not sent for transcription.
+    /// This prevents gibberish transcriptions and reduces API costs.
+    /// </summary>
+    [Fact]
+    public async Task ProcessMediaDataAsync_WithSilentAudio_ShouldSkipTranscription()
+    {
+        // Arrange
+        var streamSid = "MZ123456789";
+        var callSid = "CA123456789";
+        var silentAudio = GenerateSilentAudioPayload(bytesCount: 24001); // Exceeds threshold but is silent
+
+        await _service.HandleStreamStartAsync(streamSid, callSid);
+
+        // Act
+        await _service.ProcessMediaDataAsync(streamSid, silentAudio, "media");
+
+        // Assert - Should skip transcription due to silence detection
+        _transcriptionServiceMock.Verify(
+            x => x.TranscribeAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<ReadOnlyMemory<byte>>(),
+                It.IsAny<bool>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+
+        // Should log that chunk was skipped
+        _loggerMock.Verify(
+            x => x.Log(
+                LogLevel.Debug,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => 
+                    v.ToString()!.Contains("Skipping silent audio chunk")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    /// <summary>
+    /// Verifies that remaining buffered audio is processed when the stream stops.
+    /// This ensures we don't lose the last words spoken before the call ends.
+    /// </summary>
+    [Fact]
+    public async Task HandleStreamStopAsync_WithRemainingBuffer_ShouldProcessFinalAudio()
+    {
+        // Arrange
+        var streamSid = "MZ123456789";
+        var callSid = "CA123456789";
+        var partialAudio = GenerateNonSilentAudioPayload(bytesCount: 4000); // Below threshold (won't trigger during ProcessMedia)
+
+        await _service.HandleStreamStartAsync(streamSid, callSid);
+        
+        _transcriptionServiceMock
+            .Setup(x => x.TranscribeAsync(
+                callSid,
+                streamSid,
+                It.IsAny<ReadOnlyMemory<byte>>(),
+                true, // isFinal = true for remaining audio
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new TranscriptionResult
+            {
+                CallSid = callSid,
+                StreamSid = streamSid,
+                Text = "Final words",
+                IsFinal = true
+            });
+
+        await _service.ProcessMediaDataAsync(streamSid, partialAudio, "media");
+
+        // Act - Stop the stream, should flush remaining audio
+        await _service.HandleStreamStopAsync(streamSid, callSid);
+
+        // Assert - Should transcribe the remaining buffered audio with isFinal=true
+        _transcriptionServiceMock.Verify(
+            x => x.TranscribeAsync(
+                callSid,
+                streamSid,
+                It.IsAny<ReadOnlyMemory<byte>>(),
+                true, // Verify isFinal is true for remaining audio
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+
+        // Should log that final audio was processed
+        _loggerMock.Verify(
+            x => x.Log(
+                LogLevel.Information,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => 
+                    v.ToString()!.Contains("Processing final buffered audio chunk")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    #endregion
 }
 
