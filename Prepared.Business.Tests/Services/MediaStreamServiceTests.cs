@@ -38,7 +38,7 @@ public class MediaStreamServiceTests
         var optionsMock = new Mock<IOptions<MediaStreamOptions>>();
         optionsMock.Setup(x => x.Value).Returns(new MediaStreamOptions
         {
-            AudioBufferSeconds = 3.0, // 3 seconds = 24000 bytes at 8kHz μ-law
+            AudioBufferSeconds = 4.0, // 4 seconds = 32000 bytes at 8kHz μ-law
             SilenceThreshold = 0.9,
             SampleRate = 8000
         });
@@ -126,7 +126,7 @@ public class MediaStreamServiceTests
         // Arrange
         var streamSid = "MZ123456789";
         var callSid = "CA123456789";
-        var mediaPayload = GenerateNonSilentAudioPayload(bytesCount: 24001); // Exceeds 3-second buffer (24000 bytes)
+        var mediaPayload = GenerateNonSilentAudioPayload(bytesCount: 32001); // Exceeds 4-second buffer (32000 bytes)
         var eventType = "media";
 
         // First start the stream
@@ -313,8 +313,8 @@ public class MediaStreamServiceTests
                 FormattedAddress = "123 Main Street, San Francisco, CA"
             });
 
-        // Send enough audio data to trigger transcription (24000+ bytes for 3-second buffer)
-        var mediaPayload = GenerateNonSilentAudioPayload(bytesCount: 24001);
+        // Send enough audio data to trigger transcription (32000+ bytes for 4-second buffer)
+        var mediaPayload = GenerateNonSilentAudioPayload(bytesCount: 32001);
         await _service.ProcessMediaDataAsync(streamSid, mediaPayload, "media");
 
         // Act
@@ -657,7 +657,7 @@ public class MediaStreamServiceTests
         // Arrange
         var streamSid = "MZ123456789";
         var callSid = "CA123456789";
-        var insufficientAudio = GenerateNonSilentAudioPayload(bytesCount: 16000); // Only 2 seconds (threshold is 3 seconds)
+        var insufficientAudio = GenerateNonSilentAudioPayload(bytesCount: 24000); // Only 3 seconds (threshold is 4 seconds)
 
         await _service.HandleStreamStartAsync(streamSid, callSid);
 
@@ -685,7 +685,7 @@ public class MediaStreamServiceTests
         // Arrange
         var streamSid = "MZ123456789";
         var callSid = "CA123456789";
-        var silentAudio = GenerateSilentAudioPayload(bytesCount: 24001); // Exceeds threshold but is silent
+        var silentAudio = GenerateSilentAudioPayload(bytesCount: 32001); // Exceeds threshold but is silent
 
         await _service.HandleStreamStartAsync(streamSid, callSid);
 

@@ -40,7 +40,7 @@ public class ServiceCollectionExtensionsTests
                 { "OpenAI:Endpoint", "https://api.openai.com/v1/" },
                 { "OpenAI:DefaultModel", "gpt-4o-mini" },
                 { "OpenAI:TimeoutSeconds", "30" },
-                { "MediaStream:AudioBufferSeconds", "3.0" },
+                { "MediaStream:AudioBufferSeconds", "4.0" },
                 { "MediaStream:SilenceThreshold", "0.9" },
                 { "MediaStream:SampleRate", "8000" }
             })
@@ -102,7 +102,7 @@ public class ServiceCollectionExtensionsTests
                 { "OpenAI:Endpoint", "https://api.openai.com/v1/" },
                 { "OpenAI:DefaultModel", "gpt-4o-mini" },
                 { "OpenAI:TimeoutSeconds", "30" },
-                { "MediaStream:AudioBufferSeconds", "3.0" },
+                { "MediaStream:AudioBufferSeconds", "4.0" },
                 { "MediaStream:SilenceThreshold", "0.9" },
                 { "MediaStream:SampleRate", "8000" }
             })
@@ -178,7 +178,7 @@ public class ServiceCollectionExtensionsTests
                 { "OpenAI:Endpoint", "https://api.openai.com/v1/" },
                 { "OpenAI:DefaultModel", "gpt-4o-mini" },
                 { "OpenAI:TimeoutSeconds", "30" },
-                { "MediaStream:AudioBufferSeconds", "3.0" },
+                { "MediaStream:AudioBufferSeconds", "4.0" },
                 { "MediaStream:SilenceThreshold", "0.9" },
                 { "MediaStream:SampleRate", "8000" }
             })
