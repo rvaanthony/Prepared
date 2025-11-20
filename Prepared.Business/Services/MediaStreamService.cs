@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Prepared.Business.Interfaces;
@@ -314,13 +315,57 @@ public class MediaStreamService : IMediaStreamService
 
     private void AppendTranscript(string callSid, string text)
     {
+        // Filter out common greeting phrases that might be picked up from our TwiML greeting
+        var filteredText = FilterGreetingPhrases(text);
+        
+        if (string.IsNullOrWhiteSpace(filteredText))
+        {
+            _logger.LogDebug("Filtered out greeting phrase from transcript: CallSid={CallSid}, Original={Original}", callSid, text);
+            return;
+        }
+
         if (!_transcriptBuffers.TryGetValue(callSid, out var segments))
         {
             segments = new List<string>();
             _transcriptBuffers[callSid] = segments;
         }
 
-        segments.Add(text);
+        segments.Add(filteredText);
+    }
+
+    /// <summary>
+    /// Filters out common greeting phrases that might be picked up from TwiML audio.
+    /// </summary>
+    private static string FilterGreetingPhrases(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return text;
+
+        var filtered = text;
+        
+        // Common greeting phrases to filter (case-insensitive)
+        var greetingPhrases = new[]
+        {
+            "thank you for calling",
+            "thank you for watching",
+            "your call is being processed",
+            "your call is being transcribed",
+            "please hold",
+            "please wait"
+        };
+
+        foreach (var phrase in greetingPhrases)
+        {
+            // Remove phrase if it appears at the start (with optional punctuation)
+            var pattern = $"^{Regex.Escape(phrase)}[\\s.,!?]*";
+            filtered = Regex.Replace(
+                filtered, 
+                pattern, 
+                "", 
+                RegexOptions.IgnoreCase);
+        }
+
+        return filtered.Trim();
     }
 
     /// <summary>
@@ -461,64 +506,88 @@ public class MediaStreamService : IMediaStreamService
 
         try
         {
-            var summaryTask = _summarizationService.SummarizeAsync(callSid, transcriptText, cancellationToken);
-            var locationTask = _locationExtractionService.ExtractAsync(callSid, transcriptText, cancellationToken);
+            // Use unified insights service - extracts location, summary, and key findings in ONE call!
+            var insights = await _unifiedInsightsService.ExtractInsightsAsync(callSid, transcriptText, cancellationToken);
 
-            var summary = await summaryTask;
-            if (summary != null)
+            if (insights == null)
             {
+                _logger.LogWarning("Unified insights extraction returned null: CallSid={CallSid}", callSid);
+                return;
+            }
+
+            // Process summary & key findings
+            if (insights.Summary != null)
+            {
+                _logger.LogInformation(
+                    "Final summary extracted: CallSid={CallSid}, Summary={Summary}, KeyFindings={Count}",
+                    callSid, insights.Summary.Summary, insights.Summary.KeyFindings?.Count ?? 0);
+
                 // Save summary to storage
                 try
                 {
-                    await _summaryRepository.UpsertAsync(summary, cancellationToken);
-                    _logger.LogDebug("Saved summary: CallSid={CallSid}", callSid);
+                    await _summaryRepository.UpsertAsync(insights.Summary, cancellationToken);
+                    _logger.LogDebug("Saved final summary: CallSid={CallSid}", callSid);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to save summary: CallSid={CallSid}", callSid);
+                    _logger.LogWarning(ex, "Failed to save final summary: CallSid={CallSid}", callSid);
                 }
 
+                // Broadcast summary immediately
                 await _transcriptHub.BroadcastSummaryUpdateAsync(
                     callSid,
-                    summary.Summary,
-                    summary.KeyFindings,
+                    insights.Summary.Summary,
+                    insights.Summary.KeyFindings,
                     cancellationToken);
             }
 
-            var location = await locationTask;
-            if (location != null)
+            // Process location
+            if (insights.Location != null)
             {
                 _logger.LogInformation(
-                    "Location extraction result: CallSid={CallSid}, Address={Address}, HasCoordinates={HasCoords}, Lat={Lat}, Lng={Lng}",
-                    callSid, location.FormattedAddress, 
-                    location.Latitude.HasValue && location.Longitude.HasValue,
-                    location.Latitude, location.Longitude);
+                    "Final location extraction result: CallSid={CallSid}, Address={Address}, HasCoordinates={HasCoords}, Lat={Lat}, Lng={Lng}",
+                    callSid, insights.Location.FormattedAddress,
+                    insights.Location.Latitude.HasValue && insights.Location.Longitude.HasValue,
+                    insights.Location.Latitude, insights.Location.Longitude);
 
                 // Save location to storage if we have coordinates
-                if (location.Latitude is double lat && location.Longitude is double lng)
+                if (insights.Location.Latitude is double lat && insights.Location.Longitude is double lng)
                 {
                     try
                     {
-                        await _locationRepository.UpsertAsync(location, cancellationToken);
-                        _logger.LogInformation("Saved location: CallSid={CallSid}, Lat={Latitude}, Lng={Longitude}", callSid, lat, lng);
+                        await _locationRepository.UpsertAsync(insights.Location, cancellationToken);
+                        _logger.LogInformation("Saved final location: CallSid={CallSid}, Lat={Latitude}, Lng={Longitude}", callSid, lat, lng);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to save location: CallSid={CallSid}", callSid);
+                        _logger.LogWarning(ex, "Failed to save final location: CallSid={CallSid}", callSid);
                     }
 
+                    // Broadcast location immediately
                     await _transcriptHub.BroadcastLocationUpdateAsync(
                         callSid,
                         lat,
                         lng,
-                        location.FormattedAddress,
+                        insights.Location.FormattedAddress,
                         cancellationToken);
                 }
-                else
+                else if (!string.IsNullOrWhiteSpace(insights.Location.FormattedAddress))
                 {
-                    _logger.LogWarning(
-                        "Location extracted but no coordinates: CallSid={CallSid}, Address={Address}",
-                        callSid, location.FormattedAddress);
+                    // Address found but no coordinates - save it anyway, UI can display address text
+                    _logger.LogInformation(
+                        "Location address found but no coordinates: CallSid={CallSid}, Address={Address}",
+                        callSid, insights.Location.FormattedAddress);
+                    
+                    try
+                    {
+                        await _locationRepository.UpsertAsync(insights.Location, cancellationToken);
+                        _logger.LogDebug("Saved location address (no coordinates): CallSid={CallSid}", callSid);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to save location address: CallSid={CallSid}", callSid);
+                    }
+                    // Note: We don't broadcast location without coordinates since UI requires lat/lng for map markers
                 }
             }
             else

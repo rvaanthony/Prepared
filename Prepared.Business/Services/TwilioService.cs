@@ -82,6 +82,14 @@ public class TwilioService : ITwilioService
             var mediaStreamUrl = baseUrl.Replace("https://", "wss://").Replace("http://", "ws://");
             mediaStreamUrl = $"{mediaStreamUrl}/api/twilio/media-stream";
             
+            // Say a greeting message FIRST (before starting the stream)
+            // This ensures the stream only captures the caller's voice, not our greeting
+            response.Say(
+                _config.GreetingMessage,
+                voice: Say.VoiceEnum.PollyJoannaNeural,
+                language: Say.LanguageEnum.EnUs);
+
+            // Start media stream AFTER greeting completes - only captures caller's voice
             var start = new Start();
             var stream = new Stream
             {
@@ -91,12 +99,6 @@ public class TwilioService : ITwilioService
             };
             start.Append(stream);
             response.Append(start);
-
-            // Say a greeting message
-            response.Say(
-                _config.GreetingMessage,
-                voice: Say.VoiceEnum.PollyJoannaNeural,
-                language: Say.LanguageEnum.EnUs);
 
             // Keep the call alive
             response.Pause(length: 3600); // Max 1 hour pause

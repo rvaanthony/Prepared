@@ -72,10 +72,10 @@ If NO location found, return:
 }";
 
             var model = _options.LocationModel ?? _options.DefaultModel;
-            var isReasoningModel = model.StartsWith("o1", StringComparison.OrdinalIgnoreCase);
+            var isGpt5Model = model.StartsWith("gpt-5", StringComparison.OrdinalIgnoreCase);
             
             object payload;
-            if (isReasoningModel)
+            if (isGpt5Model)
             {
                 payload = new
                 {
@@ -93,7 +93,7 @@ If NO location found, return:
                 payload = new
                 {
                     model,
-                    temperature = 0.1, // Low temperature for consistent extraction (not supported by o1 models)
+                    temperature = 0.1, // Low temperature for consistent extraction (not supported by gpt-5 models)
                     response_format = new { type = "json_object" },
                     messages = new[]
                     {
@@ -181,14 +181,15 @@ For example:
 - ""330 West 20th Avenue, San Mateo, California"" should return coordinates near San Mateo
 - ""Main Street"" without a city should return null values";
 
-            var isReasoningModel = _options.DefaultModel.StartsWith("o1", StringComparison.OrdinalIgnoreCase);
+            var model = _options.DefaultModel;
+            var isGpt5Model = model.StartsWith("gpt-5", StringComparison.OrdinalIgnoreCase);
             
             object payload;
-            if (isReasoningModel)
+            if (isGpt5Model)
             {
                 payload = new
                 {
-                    model = _options.DefaultModel,
+                    model = model,
                     response_format = new { type = "json_object" },
                     messages = new[]
                     {
@@ -200,7 +201,7 @@ For example:
             {
                 payload = new
                 {
-                    model = _options.DefaultModel,
+                    model = model,
                     temperature = 0.1,
                     response_format = new { type = "json_object" },
                     messages = new[]
