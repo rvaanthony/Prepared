@@ -16,6 +16,7 @@ public class MediaStreamService : IMediaStreamService
     private readonly ITranscriptionService _transcriptionService;
     private readonly ISummarizationService _summarizationService;
     private readonly ILocationExtractionService _locationExtractionService;
+    private readonly UnifiedInsightsService _unifiedInsightsService;
     private readonly ICallRepository _callRepository;
     private readonly ITranscriptRepository _transcriptRepository;
     private readonly ISummaryRepository _summaryRepository;
@@ -26,6 +27,8 @@ public class MediaStreamService : IMediaStreamService
     private readonly Dictionary<string, List<string>> _transcriptBuffers = new(); // CallSid => transcript segments
     private readonly Dictionary<string, int> _transcriptSequenceNumbers = new(); // CallSid => sequence number
     private readonly Dictionary<string, List<byte>> _audioBuffers = new(); // StreamSid => buffered mu-law audio
+    private readonly Dictionary<string, DateTime> _lastLocationCheckTime = new(); // CallSid => last check time
+    private readonly Dictionary<string, bool> _locationFound = new(); // CallSid => location already found
 
     public MediaStreamService(
         ILogger<MediaStreamService> logger,
@@ -33,6 +36,7 @@ public class MediaStreamService : IMediaStreamService
         ITranscriptionService transcriptionService,
         ISummarizationService summarizationService,
         ILocationExtractionService locationExtractionService,
+        UnifiedInsightsService unifiedInsightsService,
         ICallRepository callRepository,
         ITranscriptRepository transcriptRepository,
         ISummaryRepository summaryRepository,
@@ -44,6 +48,7 @@ public class MediaStreamService : IMediaStreamService
         _transcriptionService = transcriptionService ?? throw new ArgumentNullException(nameof(transcriptionService));
         _summarizationService = summarizationService ?? throw new ArgumentNullException(nameof(summarizationService));
         _locationExtractionService = locationExtractionService ?? throw new ArgumentNullException(nameof(locationExtractionService));
+        _unifiedInsightsService = unifiedInsightsService ?? throw new ArgumentNullException(nameof(unifiedInsightsService));
         _callRepository = callRepository ?? throw new ArgumentNullException(nameof(callRepository));
         _transcriptRepository = transcriptRepository ?? throw new ArgumentNullException(nameof(transcriptRepository));
         _summaryRepository = summaryRepository ?? throw new ArgumentNullException(nameof(summaryRepository));
@@ -193,6 +198,9 @@ public class MediaStreamService : IMediaStreamService
                             text,
                             transcriptionResult.IsFinal,
                             cancellationToken);
+
+                        // Real-time location extraction - check periodically as transcript builds up
+                        await TryExtractLocationRealTimeAsync(callSid, cancellationToken);
                     }
                 }
                 else
@@ -292,6 +300,8 @@ public class MediaStreamService : IMediaStreamService
             _streamToCallMapping.Remove(streamSid);
             _transcriptSequenceNumbers.Remove(callSid);
             _audioBuffers.Remove(streamSid);
+            _lastLocationCheckTime.Remove(callSid);
+            _locationFound.Remove(callSid);
             await GenerateInsightsAsync(callSid, cancellationToken);
         }
         catch (Exception ex)
@@ -314,15 +324,141 @@ public class MediaStreamService : IMediaStreamService
         segments.Add(text);
     }
 
+    /// <summary>
+    /// Real-time location extraction - checks periodically as transcript builds up.
+    /// This enables 911-style real-time location detection while the caller is speaking.
+    /// </summary>
+    private async Task TryExtractLocationRealTimeAsync(string callSid, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Skip if we already found a location for this call
+            if (_locationFound.GetValueOrDefault(callSid, false))
+            {
+                return;
+            }
+
+            // Rate limit: only check every 5 seconds to avoid excessive API calls
+            var now = DateTime.UtcNow;
+            if (_lastLocationCheckTime.TryGetValue(callSid, out var lastCheck))
+            {
+                if ((now - lastCheck).TotalSeconds < 5)
+                {
+                    return; // Too soon since last check
+                }
+            }
+
+            // Need at least 8 words before trying to extract location
+            // Example: "I'm at 123 Main Street there's a fire" = 9 words
+            if (!_transcriptBuffers.TryGetValue(callSid, out var segments) || segments.Count == 0)
+            {
+                return;
+            }
+
+            var transcriptSoFar = string.Join(" ", segments);
+            var wordCount = transcriptSoFar.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+
+            if (wordCount < 8)
+            {
+                _logger.LogDebug(
+                    "Skipping location check - not enough words yet: CallSid={CallSid}, Words={WordCount}",
+                    callSid, wordCount);
+                return;
+            }
+
+            _lastLocationCheckTime[callSid] = now;
+
+            _logger.LogInformation(
+                "Attempting real-time UNIFIED insights extraction: CallSid={CallSid}, TranscriptLength={Length}, Words={WordCount}",
+                callSid, transcriptSoFar.Length, wordCount);
+
+            // Use unified insights service - extracts location AND summary in ONE call!
+            var insights = await _unifiedInsightsService.ExtractInsightsAsync(callSid, transcriptSoFar, cancellationToken);
+
+            if (insights?.Location is { Latitude: double lat, Longitude: double lng })
+            {
+                _logger.LogInformation(
+                    "🎯 REAL-TIME location found! CallSid={CallSid}, Address={Address}, Lat={Lat}, Lng={Lng}",
+                    callSid, insights.Location.FormattedAddress, lat, lng);
+
+                // Mark as found so we don't keep checking
+                _locationFound[callSid] = true;
+
+                // Save location to storage
+                try
+                {
+                    await _locationRepository.UpsertAsync(insights.Location, cancellationToken);
+                    _logger.LogInformation("Saved real-time location: CallSid={CallSid}", callSid);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to save real-time location: CallSid={CallSid}", callSid);
+                }
+
+                // Broadcast location immediately to UI - pin drops in real-time!
+                await _transcriptHub.BroadcastLocationUpdateAsync(
+                    callSid,
+                    lat,
+                    lng,
+                    insights.Location.FormattedAddress,
+                    cancellationToken);
+            }
+
+            // Also broadcast summary & key findings if available (bonus from unified call!)
+            if (insights?.Summary != null)
+            {
+                _logger.LogInformation(
+                    "📝 REAL-TIME summary extracted: CallSid={CallSid}, KeyFindings={Count}",
+                    callSid, insights.Summary.KeyFindings?.Count ?? 0);
+
+                // Save summary
+                try
+                {
+                    await _summaryRepository.UpsertAsync(insights.Summary, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to save real-time summary: CallSid={CallSid}", callSid);
+                }
+
+                // Broadcast summary immediately
+                await _transcriptHub.BroadcastSummaryUpdateAsync(
+                    callSid,
+                    insights.Summary.Summary,
+                    insights.Summary.KeyFindings,
+                    cancellationToken);
+            }
+            else
+            {
+                _logger.LogDebug(
+                    "No location found yet in real-time check: CallSid={CallSid}, Words={WordCount}",
+                    callSid, wordCount);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in real-time location extraction: CallSid={CallSid}", callSid);
+            // Don't throw - we don't want to break the transcription pipeline
+        }
+    }
+
     private async Task GenerateInsightsAsync(string callSid, CancellationToken cancellationToken)
     {
         if (!_transcriptBuffers.TryGetValue(callSid, out var segments) || segments.Count == 0)
         {
+            _logger.LogWarning(
+                "No transcript segments found for insights generation: CallSid={CallSid}",
+                callSid);
             return;
         }
 
         var transcriptText = string.Join(" ", segments);
         _transcriptBuffers.Remove(callSid);
+
+        _logger.LogInformation(
+            "Generating insights for call: CallSid={CallSid}, TranscriptLength={Length}, Segments={SegmentCount}",
+            callSid, transcriptText.Length, segments.Count);
+        _logger.LogInformation("Full transcript for insights: {Transcript}", transcriptText);
 
         try
         {
@@ -351,25 +487,46 @@ public class MediaStreamService : IMediaStreamService
             }
 
             var location = await locationTask;
-            if (location?.Latitude is double lat && location.Longitude is double lng)
+            if (location != null)
             {
-                // Save location to storage
-                try
-                {
-                    await _locationRepository.UpsertAsync(location, cancellationToken);
-                    _logger.LogDebug("Saved location: CallSid={CallSid}, Lat={Latitude}, Lng={Longitude}", callSid, lat, lng);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to save location: CallSid={CallSid}", callSid);
-                }
+                _logger.LogInformation(
+                    "Location extraction result: CallSid={CallSid}, Address={Address}, HasCoordinates={HasCoords}, Lat={Lat}, Lng={Lng}",
+                    callSid, location.FormattedAddress, 
+                    location.Latitude.HasValue && location.Longitude.HasValue,
+                    location.Latitude, location.Longitude);
 
-                await _transcriptHub.BroadcastLocationUpdateAsync(
-                    callSid,
-                    lat,
-                    lng,
-                    location.FormattedAddress,
-                    cancellationToken);
+                // Save location to storage if we have coordinates
+                if (location.Latitude is double lat && location.Longitude is double lng)
+                {
+                    try
+                    {
+                        await _locationRepository.UpsertAsync(location, cancellationToken);
+                        _logger.LogInformation("Saved location: CallSid={CallSid}, Lat={Latitude}, Lng={Longitude}", callSid, lat, lng);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to save location: CallSid={CallSid}", callSid);
+                    }
+
+                    await _transcriptHub.BroadcastLocationUpdateAsync(
+                        callSid,
+                        lat,
+                        lng,
+                        location.FormattedAddress,
+                        cancellationToken);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "Location extracted but no coordinates: CallSid={CallSid}, Address={Address}",
+                        callSid, location.FormattedAddress);
+                }
+            }
+            else
+            {
+                _logger.LogInformation(
+                    "No location found in transcript: CallSid={CallSid}, TranscriptLength={Length}",
+                    callSid, transcriptText.Length);
             }
         }
         catch (Exception ex)

@@ -50,9 +50,10 @@ public class OpenAiLocationExtractionServiceTests
         Assert.Equal(37.0, result!.Latitude);
         Assert.Equal(-122.0, result.Longitude);
 
+        // Verify we made TWO API calls: one for extraction, one for geocoding
         handler.Protected().Verify(
             "SendAsync",
-            Times.Once(),
+            Times.Exactly(2),
             ItExpr.IsAny<HttpRequestMessage>(),
             ItExpr.IsAny<CancellationToken>());
     }

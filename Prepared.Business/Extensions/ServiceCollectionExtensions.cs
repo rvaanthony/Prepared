@@ -84,6 +84,13 @@ public static class ServiceCollectionExtensions
             client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
         });
 
+        // Register unified insights service for efficient single-call extraction
+        services.AddHttpClient<UnifiedInsightsService>((sp, client) =>
+        {
+            var options = sp.GetRequiredService<IOptions<OpenAiOptions>>().Value;
+            client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+        });
+
         // Register Twilio services
         services.AddScoped<ITwilioService, TwilioService>();
         services.AddScoped<IMediaStreamService, MediaStreamService>();

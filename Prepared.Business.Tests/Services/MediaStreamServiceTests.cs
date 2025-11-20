@@ -17,10 +17,12 @@ public class MediaStreamServiceTests
     private readonly Mock<ITranscriptionService> _transcriptionServiceMock;
     private readonly Mock<ISummarizationService> _summarizationServiceMock;
     private readonly Mock<ILocationExtractionService> _locationExtractionServiceMock;
+    private readonly Mock<UnifiedInsightsService> _unifiedInsightsServiceMock;
     private readonly Mock<ICallRepository> _callRepositoryMock;
     private readonly Mock<ITranscriptRepository> _transcriptRepositoryMock;
     private readonly Mock<ISummaryRepository> _summaryRepositoryMock;
     private readonly Mock<ILocationRepository> _locationRepositoryMock;
+    private readonly Mock<IOptions<MediaStreamOptions>> _optionsMock;
     private readonly MediaStreamService _service;
 
     public MediaStreamServiceTests()
@@ -30,13 +32,14 @@ public class MediaStreamServiceTests
         _transcriptionServiceMock = new Mock<ITranscriptionService>();
         _summarizationServiceMock = new Mock<ISummarizationService>();
         _locationExtractionServiceMock = new Mock<ILocationExtractionService>();
+        _unifiedInsightsServiceMock = new Mock<UnifiedInsightsService>();
         _callRepositoryMock = new Mock<ICallRepository>();
         _transcriptRepositoryMock = new Mock<ITranscriptRepository>();
         _summaryRepositoryMock = new Mock<ISummaryRepository>();
         _locationRepositoryMock = new Mock<ILocationRepository>();
         
-        var optionsMock = new Mock<IOptions<MediaStreamOptions>>();
-        optionsMock.Setup(x => x.Value).Returns(new MediaStreamOptions
+        _optionsMock = new Mock<IOptions<MediaStreamOptions>>();
+        _optionsMock.Setup(x => x.Value).Returns(new MediaStreamOptions
         {
             AudioBufferSeconds = 4.0, // 4 seconds = 32000 bytes at 8kHz μ-law
             SilenceThreshold = 0.9,
@@ -49,11 +52,12 @@ public class MediaStreamServiceTests
             _transcriptionServiceMock.Object,
             _summarizationServiceMock.Object,
             _locationExtractionServiceMock.Object,
+            _unifiedInsightsServiceMock.Object,
             _callRepositoryMock.Object,
             _transcriptRepositoryMock.Object,
             _summaryRepositoryMock.Object,
             _locationRepositoryMock.Object,
-            optionsMock.Object);
+            _optionsMock.Object);
     }
 
     [Fact]
@@ -434,7 +438,7 @@ public class MediaStreamServiceTests
         
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new MediaStreamService(null!, _transcriptHubMock.Object, _transcriptionServiceMock.Object, _summarizationServiceMock.Object, _locationExtractionServiceMock.Object, _callRepositoryMock.Object, _transcriptRepositoryMock.Object, _summaryRepositoryMock.Object, _locationRepositoryMock.Object, optionsMock.Object));
+            new MediaStreamService(null!, _transcriptHubMock.Object, _transcriptionServiceMock.Object, _summarizationServiceMock.Object, _locationExtractionServiceMock.Object, _unifiedInsightsServiceMock.Object, _callRepositoryMock.Object, _transcriptRepositoryMock.Object, _summaryRepositoryMock.Object, _locationRepositoryMock.Object, optionsMock.Object));
     }
 
     [Fact]
@@ -446,7 +450,7 @@ public class MediaStreamServiceTests
         
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new MediaStreamService(_loggerMock.Object, null!, _transcriptionServiceMock.Object, _summarizationServiceMock.Object, _locationExtractionServiceMock.Object, _callRepositoryMock.Object, _transcriptRepositoryMock.Object, _summaryRepositoryMock.Object, _locationRepositoryMock.Object, optionsMock.Object));
+            new MediaStreamService(_loggerMock.Object, null!, _transcriptionServiceMock.Object, _summarizationServiceMock.Object, _locationExtractionServiceMock.Object, _unifiedInsightsServiceMock.Object, _callRepositoryMock.Object, _transcriptRepositoryMock.Object, _summaryRepositoryMock.Object, _locationRepositoryMock.Object, optionsMock.Object));
     }
 
     [Fact]
@@ -458,7 +462,7 @@ public class MediaStreamServiceTests
         
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new MediaStreamService(_loggerMock.Object, _transcriptHubMock.Object, null!, _summarizationServiceMock.Object, _locationExtractionServiceMock.Object, _callRepositoryMock.Object, _transcriptRepositoryMock.Object, _summaryRepositoryMock.Object, _locationRepositoryMock.Object, optionsMock.Object));
+            new MediaStreamService(_loggerMock.Object, _transcriptHubMock.Object, null!, _summarizationServiceMock.Object, _locationExtractionServiceMock.Object, _unifiedInsightsServiceMock.Object, _callRepositoryMock.Object, _transcriptRepositoryMock.Object, _summaryRepositoryMock.Object, _locationRepositoryMock.Object, optionsMock.Object));
     }
 
     [Fact]
@@ -469,7 +473,7 @@ public class MediaStreamServiceTests
         optionsMock.Setup(x => x.Value).Returns(new MediaStreamOptions());
         
         Assert.Throws<ArgumentNullException>(() =>
-            new MediaStreamService(_loggerMock.Object, _transcriptHubMock.Object, _transcriptionServiceMock.Object, null!, _locationExtractionServiceMock.Object, _callRepositoryMock.Object, _transcriptRepositoryMock.Object, _summaryRepositoryMock.Object, _locationRepositoryMock.Object, optionsMock.Object));
+            new MediaStreamService(_loggerMock.Object, _transcriptHubMock.Object, _transcriptionServiceMock.Object, null!, _locationExtractionServiceMock.Object, _unifiedInsightsServiceMock.Object, _callRepositoryMock.Object, _transcriptRepositoryMock.Object, _summaryRepositoryMock.Object, _locationRepositoryMock.Object, optionsMock.Object));
     }
 
     [Fact]
@@ -480,7 +484,7 @@ public class MediaStreamServiceTests
         optionsMock.Setup(x => x.Value).Returns(new MediaStreamOptions());
         
         Assert.Throws<ArgumentNullException>(() =>
-            new MediaStreamService(_loggerMock.Object, _transcriptHubMock.Object, _transcriptionServiceMock.Object, _summarizationServiceMock.Object, null!, _callRepositoryMock.Object, _transcriptRepositoryMock.Object, _summaryRepositoryMock.Object, _locationRepositoryMock.Object, optionsMock.Object));
+            new MediaStreamService(_loggerMock.Object, _transcriptHubMock.Object, _transcriptionServiceMock.Object, _summarizationServiceMock.Object, null!, _unifiedInsightsServiceMock.Object, _callRepositoryMock.Object, _transcriptRepositoryMock.Object, _summaryRepositoryMock.Object, _locationRepositoryMock.Object, optionsMock.Object));
     }
 
     [Fact]
@@ -491,7 +495,7 @@ public class MediaStreamServiceTests
         optionsMock.Setup(x => x.Value).Returns(new MediaStreamOptions());
         
         Assert.Throws<ArgumentNullException>(() =>
-            new MediaStreamService(_loggerMock.Object, _transcriptHubMock.Object, _transcriptionServiceMock.Object, _summarizationServiceMock.Object, _locationExtractionServiceMock.Object, null!, _transcriptRepositoryMock.Object, _summaryRepositoryMock.Object, _locationRepositoryMock.Object, optionsMock.Object));
+            new MediaStreamService(_loggerMock.Object, _transcriptHubMock.Object, _transcriptionServiceMock.Object, _summarizationServiceMock.Object, _locationExtractionServiceMock.Object, _unifiedInsightsServiceMock.Object, null!, _transcriptRepositoryMock.Object, _summaryRepositoryMock.Object, _locationRepositoryMock.Object, optionsMock.Object));
     }
 
     [Fact]
@@ -502,7 +506,7 @@ public class MediaStreamServiceTests
         optionsMock.Setup(x => x.Value).Returns(new MediaStreamOptions());
         
         Assert.Throws<ArgumentNullException>(() =>
-            new MediaStreamService(_loggerMock.Object, _transcriptHubMock.Object, _transcriptionServiceMock.Object, _summarizationServiceMock.Object, _locationExtractionServiceMock.Object, _callRepositoryMock.Object, null!, _summaryRepositoryMock.Object, _locationRepositoryMock.Object, optionsMock.Object));
+            new MediaStreamService(_loggerMock.Object, _transcriptHubMock.Object, _transcriptionServiceMock.Object, _summarizationServiceMock.Object, _locationExtractionServiceMock.Object, _unifiedInsightsServiceMock.Object, _callRepositoryMock.Object, null!, _summaryRepositoryMock.Object, _locationRepositoryMock.Object, optionsMock.Object));
     }
 
     [Fact]
@@ -513,7 +517,7 @@ public class MediaStreamServiceTests
         optionsMock.Setup(x => x.Value).Returns(new MediaStreamOptions());
         
         Assert.Throws<ArgumentNullException>(() =>
-            new MediaStreamService(_loggerMock.Object, _transcriptHubMock.Object, _transcriptionServiceMock.Object, _summarizationServiceMock.Object, _locationExtractionServiceMock.Object, _callRepositoryMock.Object, _transcriptRepositoryMock.Object, null!, _locationRepositoryMock.Object, optionsMock.Object));
+            new MediaStreamService(_loggerMock.Object, _transcriptHubMock.Object, _transcriptionServiceMock.Object, _summarizationServiceMock.Object, _locationExtractionServiceMock.Object, _unifiedInsightsServiceMock.Object, _callRepositoryMock.Object, _transcriptRepositoryMock.Object, null!, _locationRepositoryMock.Object, optionsMock.Object));
     }
 
     [Fact]
@@ -524,7 +528,7 @@ public class MediaStreamServiceTests
         optionsMock.Setup(x => x.Value).Returns(new MediaStreamOptions());
         
         Assert.Throws<ArgumentNullException>(() =>
-            new MediaStreamService(_loggerMock.Object, _transcriptHubMock.Object, _transcriptionServiceMock.Object, _summarizationServiceMock.Object, _locationExtractionServiceMock.Object, _callRepositoryMock.Object, _transcriptRepositoryMock.Object, _summaryRepositoryMock.Object, null!, optionsMock.Object));
+            new MediaStreamService(_loggerMock.Object, _transcriptHubMock.Object, _transcriptionServiceMock.Object, _summarizationServiceMock.Object, _locationExtractionServiceMock.Object, _unifiedInsightsServiceMock.Object, _callRepositoryMock.Object, _transcriptRepositoryMock.Object, _summaryRepositoryMock.Object, null!, optionsMock.Object));
     }
 
     [Fact]
