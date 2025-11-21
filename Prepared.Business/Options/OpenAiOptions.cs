@@ -43,8 +43,7 @@ public class OpenAiOptions
 
     /// <summary>
     /// HTTP client timeout in seconds. Defaults to 60 seconds for gpt-5-mini compatibility.
-    /// Note: The default resilience handler has a 10s attempt timeout, but the HTTP client timeout
-    /// will be the limiting factor for longer-running requests.
+    /// Unified insights requests automatically extend the resilience attempt/total timeouts to at least this value (with a 90s minimum).
     /// </summary>
     [Range(1, 300, ErrorMessage = "Timeout must be between 1 and 300 seconds")]
     public int TimeoutSeconds { get; set; } = 60;

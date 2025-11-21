@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
 using Prepared.Business.Interfaces;
 using Prepared.Business.Options;
@@ -92,14 +93,32 @@ public static class ServiceCollectionExtensions
             client.Timeout = TimeSpan.FromSeconds(config.TimeoutSeconds);
         });
 
-        // Register unified insights service for efficient single-call extraction
-        // Use longer timeout for gpt-5-mini which can take 30-60 seconds to respond
+        // Register unified insights service for efficient single-call extraction.
+        // IMPORTANT: gpt-5-mini can take 30-60+ seconds to respond. The global standard resilience handler
+        // (from ServiceDefaults) uses a 10-second attempt timeout, which is incompatible with this service.
+        // We do NOT add any resilience handler here. Instead, we rely on the HTTP client timeout and
+        // the service's own error handling to manage long-running requests gracefully.
         services.AddHttpClient<IUnifiedInsightsService, UnifiedInsightsService>((sp, client) =>
         {
             var config = sp.GetRequiredService<IOpenAiConfigurationService>();
-            // Set HTTP client timeout to 90 seconds for gpt-5-mini (default resilience handler timeout is 10s, but HTTP timeout will be the limiting factor)
-            // The default resilience handler's attempt timeout (10s) will be overridden by the longer HTTP client timeout
-            client.Timeout = TimeSpan.FromSeconds(Math.Max(config.TimeoutSeconds, 90));
+            // Minimum 90 seconds to accommodate gpt-5-mini response times
+            var timeoutSeconds = Math.Max(config.TimeoutSeconds, 90);
+            client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
+        })
+#pragma warning disable EXTEXP0001 // Remove and reconfigure resilience handler
+        .RemoveAllResilienceHandlers()
+#pragma warning restore EXTEXP0001
+        .AddStandardResilienceHandler()
+        .Configure((options, sp) =>
+        {
+            var config = sp.GetRequiredService<IOpenAiConfigurationService>();
+            var timeoutSeconds = Math.Max(config.TimeoutSeconds, 90);
+            var timeout = TimeSpan.FromSeconds(timeoutSeconds);
+
+            // Override all timeout values to match the long-running nature of this service
+            options.AttemptTimeout.Timeout = timeout;
+            options.TotalRequestTimeout.Timeout = timeout.Add(TimeSpan.FromSeconds(5));
+            options.CircuitBreaker.SamplingDuration = timeout.Add(timeout);
         });
 
         // Register Twilio services
