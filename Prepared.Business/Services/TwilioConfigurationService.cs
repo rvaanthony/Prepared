@@ -20,7 +20,7 @@ public class TwilioConfigurationService(IConfiguration configuration) : ITwilioC
     public string WebhookUrl => configuration["Twilio:WebhookUrl"] ?? "";
 
     public string GreetingMessage => configuration["Twilio:GreetingMessage"] 
-        ?? "Hello! Thanks for calling. I'm connecting you now, and your conversation will be transcribed live for your records.";
+        ?? "Hello! Thanks for calling. I'm connecting you now..";
 
     public string ErrorMessage => configuration["Twilio:ErrorMessage"] 
         ?? "I'm sorry, we're experiencing technical difficulties at the moment. Please try calling back in a few minutes.";
