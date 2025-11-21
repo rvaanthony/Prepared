@@ -93,24 +93,16 @@ public static class ServiceCollectionExtensions
             client.Timeout = TimeSpan.FromSeconds(config.TimeoutSeconds);
         });
 
-        // Unified insights needs 90s+ timeout for gpt-5-mini. Global resilience handler has 10s attempt timeout.
+        // Unified insights needs 90s+ timeout for gpt-5-mini. Remove global resilience handler (10s timeout) entirely.
         services.AddHttpClient<IUnifiedInsightsService, UnifiedInsightsService>((sp, client) =>
         {
             var config = sp.GetRequiredService<IOpenAiConfigurationService>();
             var timeoutSeconds = Math.Max(config.TimeoutSeconds, 90);
             client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
         })
-        .AddStandardResilienceHandler()
-        .Configure((options, sp) =>
-        {
-            var config = sp.GetRequiredService<IOpenAiConfigurationService>();
-            var timeoutSeconds = Math.Max(config.TimeoutSeconds, 90);
-            var timeout = TimeSpan.FromSeconds(timeoutSeconds);
-            
-            options.AttemptTimeout.Timeout = timeout;
-            options.TotalRequestTimeout.Timeout = timeout.Add(TimeSpan.FromSeconds(5));
-            options.CircuitBreaker.SamplingDuration = timeout.Add(timeout);
-        });
+#pragma warning disable EXTEXP0001
+        .RemoveAllResilienceHandlers();
+#pragma warning restore EXTEXP0001
 
         // Register Twilio services
         services.AddScoped<ITwilioService, TwilioService>();
