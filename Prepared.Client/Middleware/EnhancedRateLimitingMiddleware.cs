@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using Microsoft.Extensions.Options;
 using Prepared.Client.Options;
 
@@ -49,18 +50,18 @@ public class EnhancedRateLimitingMiddleware
         // Check rate limit with sliding window
         var rateLimitInfo = _rateLimitCache.AddOrUpdate(
             clientIp,
-            _ => new RateLimitInfo { FirstRequest = now, LastRequest = now, RequestCount = 1 },
+            _ => new RateLimitInfo(now),
             (_, existing) =>
             {
-                // Reset if outside time window
-                if (now - existing.LastRequest > timeWindow)
+                if (now - existing.FirstRequest > timeWindow)
                 {
-                    return new RateLimitInfo { FirstRequest = now, LastRequest = now, RequestCount = 1 };
+                    existing.Reset(now);
+                }
+                else
+                {
+                    existing.Touch(now);
                 }
 
-                // Increment if within window
-                existing.RequestCount++;
-                existing.LastRequest = now;
                 return existing;
             });
 
@@ -71,7 +72,10 @@ public class EnhancedRateLimitingMiddleware
                 clientIp, rateLimitInfo.RequestCount, _options.MaxRequests, _options.TimeWindowSeconds);
 
             context.Response.StatusCode = 429; // Too Many Requests
-            context.Response.Headers.Append("Retry-After", _options.TimeWindowSeconds.ToString());
+            var retryAfterSeconds = Math.Max(
+                1,
+                _options.TimeWindowSeconds - (int)(now - rateLimitInfo.FirstRequest).TotalSeconds);
+            context.Response.Headers.Append("Retry-After", retryAfterSeconds.ToString(CultureInfo.InvariantCulture));
             context.Response.ContentType = "application/json";
             await context.Response.WriteAsync(
                 $"{{\"error\":\"Rate limit exceeded. Maximum {_options.MaxRequests} requests per {_options.TimeWindowSeconds} seconds.\"}}");
@@ -105,11 +109,26 @@ public class EnhancedRateLimitingMiddleware
         }
     }
 
-    private class RateLimitInfo
+    private sealed class RateLimitInfo
     {
-        public int RequestCount { get; set; }
-        public DateTime FirstRequest { get; set; }
-        public DateTime LastRequest { get; set; }
+        public RateLimitInfo(DateTime timestamp) => Reset(timestamp);
+
+        public int RequestCount { get; private set; }
+        public DateTime FirstRequest { get; private set; }
+        public DateTime LastRequest { get; private set; }
+
+        public void Reset(DateTime timestamp)
+        {
+            RequestCount = 1;
+            FirstRequest = timestamp;
+            LastRequest = timestamp;
+        }
+
+        public void Touch(DateTime timestamp)
+        {
+            RequestCount++;
+            LastRequest = timestamp;
+        }
     }
 }
 

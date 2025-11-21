@@ -8,8 +8,7 @@ using Prepared.Common.Models;
 namespace Prepared.Business.Services;
 
 /// <summary>
-/// Unified insights extraction service that extracts location, summary, and key findings in a single API call.
-/// This is more efficient and cost-effective than separate calls, and allows GPT to correlate information.
+/// Extracts location, summary, and key findings from a transcript in one OpenAI request.
 /// </summary>
 public class UnifiedInsightsService : IUnifiedInsightsService
 {
@@ -230,7 +229,7 @@ Return ONLY valid JSON with this EXACT structure:
                 };
 
                 _logger.LogInformation(
-                    "🎯 Unified extraction found location: CallSid={CallSid}, Address={Address}, Lat={Lat}, Lng={Lng}",
+                    "Unified extraction found location: CallSid={CallSid}, Address={Address}, Lat={Lat}, Lng={Lng}",
                     callSid, result.Location.FormattedAddress, result.Location.Latitude, result.Location.Longitude);
             }
 

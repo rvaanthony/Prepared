@@ -13,7 +13,7 @@ using ThreadingTask = System.Threading.Tasks;
 namespace Prepared.Business.Services;
 
 /// <summary>
-/// Service for handling Twilio operations with production-ready error handling and logging
+/// Handles Twilio call orchestration, webhook validation, and status updates.
 /// </summary>
 public class TwilioService : ITwilioService
 {

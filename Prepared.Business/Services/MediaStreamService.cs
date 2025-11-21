@@ -6,7 +6,7 @@ using Prepared.Data.Interfaces;
 namespace Prepared.Business.Services;
 
 /// <summary>
-/// Service for handling Twilio Media Streams with production-ready error handling
+/// Coordinates Twilio media stream lifecycle events and downstream processing.
 /// </summary>
 public class MediaStreamService : IMediaStreamService
 {
@@ -429,7 +429,7 @@ public class MediaStreamService : IMediaStreamService
             if (insights?.Location is { Latitude: double lat, Longitude: double lng })
             {
                 _logger.LogInformation(
-                    "🎯 REAL-TIME location found! CallSid={CallSid}, Address={Address}, Lat={Lat}, Lng={Lng}",
+                    "Real-time location found: CallSid={CallSid}, Address={Address}, Lat={Lat}, Lng={Lng}",
                     callSid, insights.Location.FormattedAddress, lat, lng);
 
                 // Mark as found so we don't keep checking
@@ -459,7 +459,7 @@ public class MediaStreamService : IMediaStreamService
             if (insights?.Summary != null)
             {
                 _logger.LogInformation(
-                    "📝 REAL-TIME summary extracted: CallSid={CallSid}, KeyFindings={Count}",
+                    "Real-time summary extracted: CallSid={CallSid}, KeyFindings={Count}",
                     callSid, insights.Summary.KeyFindings?.Count ?? 0);
 
                 // Save summary

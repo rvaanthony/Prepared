@@ -4,8 +4,7 @@ using Microsoft.Extensions.Logging;
 namespace Prepared.Client.Hubs;
 
 /// <summary>
-/// SignalR Hub for broadcasting real-time transcript updates to connected clients
-/// Implements production-ready patterns with error handling, logging, and connection management
+/// Broadcasts transcript, status, summary, and location updates over SignalR.
 /// </summary>
 public class TranscriptHub : Hub
 {
