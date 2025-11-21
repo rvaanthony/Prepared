@@ -39,8 +39,17 @@ public class TwilioService : ITwilioService
         _logger.LogInformation("TwilioClient initialized with API Key authentication, using Auth Token for webhook validation");
     }
 
+    /// <summary>
+    /// Handles an incoming call from Twilio and generates TwiML response with media stream configuration.
+    /// </summary>
+    /// <param name="callInfo">Information about the incoming call.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>TwiML XML response string.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="callInfo"/> is null.</exception>
     public async Task<string> HandleIncomingCallAsync(CallInfo callInfo, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(callInfo);
+        
         try
         {
             _logger.LogInformation(
@@ -132,8 +141,20 @@ public class TwilioService : ITwilioService
         }
     }
 
+    /// <summary>
+    /// Handles a call status update webhook from Twilio.
+    /// </summary>
+    /// <param name="callSid">The unique identifier for the call.</param>
+    /// <param name="status">The new call status.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="callSid"/> or <paramref name="status"/> is null or empty.</exception>
     public async ThreadingTask.Task HandleCallStatusUpdateAsync(string callSid, string status, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(callSid))
+            throw new ArgumentException("CallSid cannot be null or empty", nameof(callSid));
+        if (string.IsNullOrWhiteSpace(status))
+            throw new ArgumentException("Status cannot be null or empty", nameof(status));
+            
         try
         {
             _logger.LogInformation(
@@ -163,8 +184,6 @@ public class TwilioService : ITwilioService
             _logger.LogInformation(
                 "Processed call status update: CallSid={CallSid}, Status={Status}",
                 callSid, callStatus);
-
-            await System.Threading.Tasks.Task.CompletedTask;
         }
         catch (Exception ex)
         {
@@ -175,8 +194,21 @@ public class TwilioService : ITwilioService
         }
     }
 
+    /// <summary>
+    /// Validates a Twilio webhook signature to ensure the request is authentic.
+    /// </summary>
+    /// <param name="url">The full URL that was called (used for signature validation).</param>
+    /// <param name="parameters">The form parameters from the webhook request.</param>
+    /// <param name="signature">The X-Twilio-Signature header value.</param>
+    /// <returns>True if the signature is valid, false otherwise.</returns>
     public bool ValidateWebhookSignature(string url, Dictionary<string, string> parameters, string signature)
     {
+        if (string.IsNullOrWhiteSpace(url))
+            throw new ArgumentException("URL cannot be null or empty", nameof(url));
+        ArgumentNullException.ThrowIfNull(parameters);
+        if (string.IsNullOrWhiteSpace(signature))
+            throw new ArgumentException("Signature cannot be null or empty", nameof(signature));
+            
         try
         {
             // Check if validation is disabled (for debugging only - remove in production!)
@@ -257,6 +289,10 @@ public class TwilioService : ITwilioService
         }
     }
 
+    /// <summary>
+    /// Gets the configured webhook base URL for Twilio webhooks.
+    /// </summary>
+    /// <returns>The webhook base URL.</returns>
     public string GetWebhookBaseUrl()
     {
         return _config.WebhookUrl;

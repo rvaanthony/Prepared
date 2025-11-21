@@ -6,12 +6,25 @@ using Prepared.Data.Services;
 
 namespace Prepared.Data.Extensions;
 
+/// <summary>
+/// Extension methods for registering data layer services with dependency injection.
+/// </summary>
 public static class ServiceCollectionExtensions
 {
+    /// <summary>
+    /// Registers all data access services including repositories and Azure Table Storage services.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configuration">Application configuration.</param>
+    /// <returns>The service collection for chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="services"/> or <paramref name="configuration"/> is null.</exception>
     public static IServiceCollection AddDataServices(
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
+
         // The configuration service is a read-only container for configuration values.
         services.AddSingleton<IDataConfigurationService, DataConfigurationService>();
 

@@ -219,8 +219,6 @@ public class MediaStreamService : IMediaStreamService
                     _logger.LogDebug("No call mapping found for StreamSid={StreamSid}", streamSid);
                 }
             }
-
-            await Task.CompletedTask;
         }
         catch (Exception ex)
         {

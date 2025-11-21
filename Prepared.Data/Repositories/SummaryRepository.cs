@@ -21,8 +21,7 @@ public class SummaryRepository : ISummaryRepository
 
     public async Task UpsertAsync(TranscriptSummary summary, CancellationToken cancellationToken = default)
     {
-        if (summary == null)
-            throw new ArgumentNullException(nameof(summary));
+        ArgumentNullException.ThrowIfNull(summary);
 
         try
         {

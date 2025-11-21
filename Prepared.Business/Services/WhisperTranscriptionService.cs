@@ -33,6 +33,16 @@ public class WhisperTranscriptionService : ITranscriptionService
         ConfigureHttpClient();
     }
 
+    /// <summary>
+    /// Transcribes audio data using OpenAI's Whisper API.
+    /// </summary>
+    /// <param name="callSid">The unique identifier for the call.</param>
+    /// <param name="streamSid">The unique identifier for the media stream.</param>
+    /// <param name="audioBytes">The audio data in mu-law PCM format.</param>
+    /// <param name="isFinal">Whether this is the final audio chunk for the stream.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A transcription result, or null if transcription fails or audio is empty.</returns>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="callSid"/> or <paramref name="streamSid"/> is null or empty.</exception>
     public async Task<TranscriptionResult?> TranscribeAsync(
         string callSid,
         string streamSid,
@@ -40,6 +50,11 @@ public class WhisperTranscriptionService : ITranscriptionService
         bool isFinal = false,
         CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(callSid))
+            throw new ArgumentException("CallSid cannot be null or empty", nameof(callSid));
+        if (string.IsNullOrWhiteSpace(streamSid))
+            throw new ArgumentException("StreamSid cannot be null or empty", nameof(streamSid));
+            
         if (audioBytes.IsEmpty)
         {
             _logger.LogDebug("Skipping transcription (empty audio): CallSid={CallSid}, StreamSid={StreamSid}", callSid, streamSid);

@@ -32,8 +32,19 @@ public class OpenAiSummarizationService : ISummarizationService
         ConfigureClient();
     }
 
+    /// <summary>
+    /// Generates a summary and key findings from a call transcript using OpenAI.
+    /// </summary>
+    /// <param name="callSid">The unique identifier for the call.</param>
+    /// <param name="transcript">The transcript text to summarize.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A transcript summary with key findings, or null if summarization fails or transcript is empty.</returns>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="callSid"/> is null or empty.</exception>
     public async Task<TranscriptSummary?> SummarizeAsync(string callSid, string transcript, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(callSid))
+            throw new ArgumentException("CallSid cannot be null or empty", nameof(callSid));
+            
         if (string.IsNullOrWhiteSpace(transcript))
         {
             _logger.LogDebug("Skipping summarization (empty transcript): CallSid={CallSid}", callSid);

@@ -85,7 +85,6 @@ public class CorsMiddleware
             _options.MaxAgeSeconds.ToString());
 
         context.Response.StatusCode = 204; // No Content
-        await Task.CompletedTask;
     }
 
     private bool IsOriginAllowed(string origin)

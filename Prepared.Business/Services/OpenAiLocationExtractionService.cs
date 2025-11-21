@@ -32,8 +32,19 @@ public class OpenAiLocationExtractionService : ILocationExtractionService
         ConfigureClient();
     }
 
+    /// <summary>
+    /// Extracts location information from a call transcript using OpenAI.
+    /// </summary>
+    /// <param name="callSid">The unique identifier for the call.</param>
+    /// <param name="transcript">The transcript text to analyze.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A location extraction result with address and coordinates, or null if no location found or extraction fails.</returns>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="callSid"/> is null or empty.</exception>
     public async Task<LocationExtractionResult?> ExtractAsync(string callSid, string transcript, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(callSid))
+            throw new ArgumentException("CallSid cannot be null or empty", nameof(callSid));
+            
         if (string.IsNullOrWhiteSpace(transcript))
         {
             _logger.LogDebug("Skipping location extraction - transcript is empty: CallSid={CallSid}", callSid);

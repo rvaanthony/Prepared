@@ -32,11 +32,22 @@ public class UnifiedInsightsService : IUnifiedInsightsService
         ConfigureClient();
     }
 
+    /// <summary>
+    /// Extracts unified insights (location, summary, key findings) from a call transcript in a single API call.
+    /// </summary>
+    /// <param name="callSid">The unique identifier for the call.</param>
+    /// <param name="transcript">The transcript text to analyze.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Unified insights result containing location, summary, and key findings, or null if extraction fails or transcript is empty.</returns>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="callSid"/> is null or empty.</exception>
     public async Task<UnifiedInsightsResult?> ExtractInsightsAsync(
         string callSid, 
         string transcript, 
         CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(callSid))
+            throw new ArgumentException("CallSid cannot be null or empty", nameof(callSid));
+            
         if (string.IsNullOrWhiteSpace(transcript))
         {
             _logger.LogDebug("Skipping insights extraction - transcript is empty: CallSid={CallSid}", callSid);

@@ -21,8 +21,7 @@ public class TranscriptRepository : ITranscriptRepository
 
     public async Task SaveAsync(TranscriptionResult transcription, int sequenceNumber = 0, CancellationToken cancellationToken = default)
     {
-        if (transcription == null)
-            throw new ArgumentNullException(nameof(transcription));
+        ArgumentNullException.ThrowIfNull(transcription);
 
         try
         {
