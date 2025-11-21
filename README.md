@@ -20,7 +20,7 @@ Prepared is a full-stack application designed to handle emergency dispatch scena
 1. **Call Reception**: Twilio receives the call and establishes a WebSocket connection to stream audio in real-time
 2. **Live Transcription**: Audio chunks are buffered and sent to OpenAI's Whisper API for real-time transcription
 3. **Real-Time Updates**: Transcripts are pushed to connected web clients via SignalR as they're generated
-4. **Intelligence Extraction**: Once sufficient context is gathered, the system uses GPT to extract:
+4. **Intelligence Extraction**: Once sufficient context is gathered, the system uses GPT-5 to extract:
    - Location information (addresses, coordinates)
    - Incident summaries
    - Key findings and urgency indicators
@@ -76,12 +76,12 @@ This project follows **Clean Architecture** principles with clear separation of 
 - **ASP.NET Core MVC** - Web application framework
 - **SignalR** - Real-time bidirectional communication
 - **Azure Data Tables** - NoSQL storage for call records and transcripts
-- **.NET Aspire** - Cloud-native orchestration and service defaults
+- **Aspire** - Cloud-native orchestration and service defaults
 
 ### External Services & APIs
 - **Twilio** - Voice call handling and Media Streams (WebSocket-based audio streaming)
 - **OpenAI Whisper API** - Real-time speech-to-text transcription
-- **OpenAI GPT API** - Natural language understanding for location extraction and summarization
+- **OpenAI GPT-5 API** - Natural language understanding for location extraction and summarization
 - **Google Maps JavaScript API** - Interactive mapping and geocoding
 
 ### Frontend
@@ -112,13 +112,13 @@ This project follows **Clean Architecture** principles with clear separation of 
 
 ### AI/ML Integration
 - **API Integration**: Consuming OpenAI's REST APIs with proper error handling and retry logic
-- **Prompt Engineering**: Structured prompts for consistent JSON extraction from GPT responses
+- **Prompt Engineering**: Structured prompts for consistent JSON extraction from GPT-5 responses
 - **Cost Optimization**: Unified API calls to reduce token usage and latency
-- **Model Selection**: Support for different GPT models (including reasoning models like o1) based on use case
+- **Model Selection**: Support for different GPT-5 models based on use case
 
 ### Cloud Architecture
 - **Azure Integration**: Azure Table Storage for scalable, serverless data persistence
-- **Service Orchestration**: .NET Aspire for cloud-native application hosting
+- **Service Orchestration**: Aspire for cloud-native application hosting
 - **Configuration Management**: Environment-based configuration with validation
 
 ### Security & Performance
@@ -151,7 +151,7 @@ This project follows **Clean Architecture** principles with clear separation of 
 - **Prepared.Business**: Business logic layer with services and interfaces
 - **Prepared.Data**: Data access layer with Azure Table Storage repositories
 - **Prepared.Common**: Shared models, enums, interfaces, and utilities
-- **Prepared.ServiceDefaults**: .NET Aspire service defaults and configuration
+- **Prepared.ServiceDefaults**: Aspire service defaults and configuration
 - **Prepared.AppHost**: Aspire application host for orchestration
 
 ### Test Projects
@@ -211,7 +211,7 @@ Set the following in `appsettings.Development.json` or user secrets:
   },
   "OpenAI": {
     "ApiKey": "your-openai-api-key",
-    "DefaultModel": "gpt-4o-mini"
+    "DefaultModel": "gpt-5"
   }
 }
 ```
