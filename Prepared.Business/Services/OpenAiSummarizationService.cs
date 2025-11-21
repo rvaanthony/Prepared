@@ -2,9 +2,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Prepared.Business.Interfaces;
-using Prepared.Business.Options;
 using Prepared.Common.Models;
 
 namespace Prepared.Business.Services;
@@ -16,17 +14,17 @@ namespace Prepared.Business.Services;
 public class OpenAiSummarizationService : ISummarizationService
 {
     private readonly HttpClient _httpClient;
-    private readonly OpenAiOptions _options;
+    private readonly IOpenAiConfigurationService _config;
     private readonly ILogger<OpenAiSummarizationService> _logger;
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
 
     public OpenAiSummarizationService(
         HttpClient httpClient,
-        IOptions<OpenAiOptions> options,
+        IOpenAiConfigurationService config,
         ILogger<OpenAiSummarizationService> logger)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-        _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
+        _config = config ?? throw new ArgumentNullException(nameof(config));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         ConfigureClient();
@@ -53,7 +51,7 @@ public class OpenAiSummarizationService : ISummarizationService
 
         try
         {
-            var model = _options.SummarizationModel ?? _options.DefaultModel;
+            var model = _config.SummarizationModel;
             var isGpt5Model = model.StartsWith("gpt-5", StringComparison.OrdinalIgnoreCase);
             
             object payload;
@@ -117,9 +115,9 @@ public class OpenAiSummarizationService : ISummarizationService
 
     private void ConfigureClient()
     {
-        _httpClient.BaseAddress = new Uri(_options.Endpoint.TrimEnd('/') + "/");
+        _httpClient.BaseAddress = new Uri(_config.Endpoint.TrimEnd('/') + "/");
         _httpClient.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", _options.ApiKey);
+            new AuthenticationHeaderValue("Bearer", _config.ApiKey);
     }
 
     private static IReadOnlyList<string> ExtractKeyPoints(string content)

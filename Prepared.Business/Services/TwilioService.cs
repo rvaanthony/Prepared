@@ -206,22 +206,23 @@ public class TwilioService : ITwilioService
         if (string.IsNullOrWhiteSpace(url))
             throw new ArgumentException("URL cannot be null or empty", nameof(url));
         ArgumentNullException.ThrowIfNull(parameters);
-        if (string.IsNullOrWhiteSpace(signature))
-            throw new ArgumentException("Signature cannot be null or empty", nameof(signature));
-            
+        // Note: Empty/whitespace signatures are handled gracefully by returning false
+        // rather than throwing, to match expected behavior for invalid webhook requests
+        
         try
         {
+            // Handle empty/whitespace signatures gracefully (return false, don't throw)
+            if (string.IsNullOrWhiteSpace(signature))
+            {
+                _logger.LogWarning("Webhook signature validation failed: signature is empty");
+                return false;
+            }
+
             // Check if validation is disabled (for debugging only - remove in production!)
             if (_config.DisableWebhookValidation)
             {
                 _logger.LogWarning("Webhook signature validation is DISABLED - this should only be used for debugging!");
                 return true;
-            }
-
-            if (string.IsNullOrWhiteSpace(signature))
-            {
-                _logger.LogWarning("Webhook signature validation failed: signature is empty");
-                return false;
             }
 
             if (string.IsNullOrWhiteSpace(_config.AuthToken))

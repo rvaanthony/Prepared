@@ -2,9 +2,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Prepared.Business.Interfaces;
-using Prepared.Business.Options;
 using Prepared.Common.Models;
 
 namespace Prepared.Business.Services;
@@ -16,17 +14,17 @@ namespace Prepared.Business.Services;
 public class UnifiedInsightsService : IUnifiedInsightsService
 {
     private readonly HttpClient _httpClient;
-    private readonly OpenAiOptions _options;
+    private readonly IOpenAiConfigurationService _config;
     private readonly ILogger<UnifiedInsightsService> _logger;
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
 
     public UnifiedInsightsService(
         HttpClient httpClient,
-        IOptions<OpenAiOptions> options,
+        IOpenAiConfigurationService config,
         ILogger<UnifiedInsightsService> logger)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-        _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
+        _config = config ?? throw new ArgumentNullException(nameof(config));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         ConfigureClient();
@@ -81,16 +79,16 @@ KEY FINDINGS:
 
 EXAMPLES:
 
-Input: ""Hey, I'm at 330 West 20th Avenue in San Mateo, California. There's a fire in the building. Two people are trapped on the second floor.""
+Input: ""Hey, I'm at 600 East Broad Street in Richmond, Virginia. There's a fire in the building. Two people are trapped on the second floor.""
 Output:
 {
   ""location"": {
-    ""address"": ""330 West 20th Avenue, San Mateo, California"",
-    ""latitude"": 37.5635,
-    ""longitude"": -122.3255,
+    ""address"": ""600 East Broad Street, Richmond, Virginia"",
+    ""latitude"": 37.5407,
+    ""longitude"": -77.4360,
     ""confidence"": 0.9
   },
-  ""summary"": ""Structure fire at 330 West 20th Avenue, San Mateo with two people trapped on second floor"",
+  ""summary"": ""Structure fire at 600 East Broad Street, Richmond, Virginia with two people trapped on second floor"",
   ""key_findings"": [
     ""Active fire in building"",
     ""Two people trapped on second floor"",
@@ -140,7 +138,7 @@ Return ONLY valid JSON with this EXACT structure:
 }";
 
             // Check if using gpt-5 models (gpt-5-mini, gpt-5, etc.) - they don't support temperature
-            var modelName = _options.DefaultModel;
+            var modelName = _config.DefaultModel;
             var isGpt5Model = modelName.StartsWith("gpt-5", StringComparison.OrdinalIgnoreCase);
             
             object payload;
@@ -251,9 +249,9 @@ Return ONLY valid JSON with this EXACT structure:
 
     private void ConfigureClient()
     {
-        _httpClient.BaseAddress = new Uri(_options.Endpoint.TrimEnd('/') + "/");
+        _httpClient.BaseAddress = new Uri(_config.Endpoint.TrimEnd('/') + "/");
         _httpClient.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", _options.ApiKey);
+            new AuthenticationHeaderValue("Bearer", _config.ApiKey);
     }
 
     private sealed record CompletionResponse(ChatChoice[] Choices);
