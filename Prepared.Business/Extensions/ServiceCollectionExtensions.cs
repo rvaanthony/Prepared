@@ -79,30 +79,30 @@ public static class ServiceCollectionExtensions
         {
             var config = sp.GetRequiredService<IWhisperConfigurationService>();
             client.Timeout = TimeSpan.FromSeconds(config.TimeoutSeconds);
-        });
+        })
+        .AddStandardResilienceHandler();
 
         services.AddHttpClient<ISummarizationService, OpenAiSummarizationService>((sp, client) =>
         {
             var config = sp.GetRequiredService<IOpenAiConfigurationService>();
             client.Timeout = TimeSpan.FromSeconds(config.TimeoutSeconds);
-        });
+        })
+        .AddStandardResilienceHandler();
 
         services.AddHttpClient<ILocationExtractionService, OpenAiLocationExtractionService>((sp, client) =>
         {
             var config = sp.GetRequiredService<IOpenAiConfigurationService>();
             client.Timeout = TimeSpan.FromSeconds(config.TimeoutSeconds);
-        });
+        })
+        .AddStandardResilienceHandler();
 
-        // Unified insights needs 90s+ timeout for gpt-5-mini. Remove global resilience handler (10s timeout) entirely.
+        // Unified insights needs 90s+ timeout for gpt-5-mini.
         services.AddHttpClient<IUnifiedInsightsService, UnifiedInsightsService>((sp, client) =>
         {
             var config = sp.GetRequiredService<IOpenAiConfigurationService>();
             var timeoutSeconds = Math.Max(config.TimeoutSeconds, 90);
             client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
-        })
-#pragma warning disable EXTEXP0001
-        .RemoveAllResilienceHandlers();
-#pragma warning restore EXTEXP0001
+        });
 
         // Register Twilio services
         services.AddScoped<ITwilioService, TwilioService>();
