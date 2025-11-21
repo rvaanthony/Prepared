@@ -2,6 +2,17 @@
 
 A real-time call processing and intelligence extraction system that demonstrates enterprise-grade software engineering practices. This application processes incoming phone calls, performs live transcription, extracts actionable insights using AI, and visualizes location data on an interactive map—all in real-time.
 
+## Demo
+
+### Video Walkthrough
+Watch the complete process in action:
+
+https://preparedproduction.blob.core.windows.net/public/Demo.mp4
+
+### Screenshot
+
+![Screenshot after receiving a call](https://preparedproduction.blob.core.windows.net/public/Demo.jpg)
+
 ## What It Does
 
 Prepared is a full-stack application designed to handle emergency dispatch scenarios or call center operations. When a call comes in:
@@ -23,7 +34,7 @@ This project follows **Clean Architecture** principles with clear separation of 
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  Prepared.Client (ASP.NET Core MVC)                      │
+│  Prepared.Client (ASP.NET Core MVC)                     │
 │  - Controllers, Views, SignalR Hubs                     │
 │  - WebSocket handlers for Twilio Media Streams          │
 │  - Middleware (Security, Rate Limiting, CORS)           │
@@ -31,10 +42,10 @@ This project follows **Clean Architecture** principles with clear separation of 
                    │
 ┌──────────────────▼──────────────────────────────────────┐
 │  Prepared.Business (Business Logic Layer)               │
-│  - TwilioService: Call handling & TwiML generation     │
+│  - TwilioService: Call handling & TwiML generation      │
 │  - MediaStreamService: WebSocket audio processing       │
 │  - WhisperTranscriptionService: Real-time transcription │
-│  - UnifiedInsightsService: AI-powered extraction       │
+│  - UnifiedInsightsService: AI-powered extraction        │
 │  - Repository interfaces                                │
 └──────────────────┬──────────────────────────────────────┘
                    │
@@ -46,7 +57,7 @@ This project follows **Clean Architecture** principles with clear separation of 
                    │
 ┌──────────────────▼──────────────────────────────────────┐
 │  Prepared.Common (Shared Domain Models)                 │
-│  - DTOs, Enums, Interfaces, Utilities                  │
+│  - DTOs, Enums, Interfaces, Utilities                   │
 └─────────────────────────────────────────────────────────┘
 ```
 
