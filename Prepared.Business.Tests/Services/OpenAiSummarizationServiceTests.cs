@@ -62,6 +62,34 @@ public class OpenAiSummarizationServiceTests
             ItExpr.IsAny<CancellationToken>());
     }
 
+    [Fact]
+    public async Task SummarizeAsync_WithNullCallSid_ShouldThrow()
+    {
+        // Arrange
+        var handler = SetupHandler(HttpStatusCode.OK, new { choices = Array.Empty<object>() });
+        var httpClient = new HttpClient(handler.Object);
+        var logger = new Mock<ILogger<OpenAiSummarizationService>>();
+        var service = new OpenAiSummarizationService(httpClient, _configMock.Object, logger.Object);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            service.SummarizeAsync(null!, "test transcript"));
+    }
+
+    [Fact]
+    public async Task SummarizeAsync_WithEmptyCallSid_ShouldThrow()
+    {
+        // Arrange
+        var handler = SetupHandler(HttpStatusCode.OK, new { choices = Array.Empty<object>() });
+        var httpClient = new HttpClient(handler.Object);
+        var logger = new Mock<ILogger<OpenAiSummarizationService>>();
+        var service = new OpenAiSummarizationService(httpClient, _configMock.Object, logger.Object);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            service.SummarizeAsync(string.Empty, "test transcript"));
+    }
+
     private static Mock<HttpMessageHandler> SetupHandler(HttpStatusCode statusCode, object payload)
     {
         var handlerMock = new Mock<HttpMessageHandler>();

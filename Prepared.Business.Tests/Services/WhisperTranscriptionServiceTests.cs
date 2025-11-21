@@ -89,6 +89,62 @@ public class WhisperTranscriptionServiceTests
             ItExpr.IsAny<CancellationToken>());
     }
 
+    [Fact]
+    public async Task TranscribeAsync_WithNullCallSid_ShouldThrow()
+    {
+        // Arrange
+        var handlerMock = SetupHandler(HttpStatusCode.OK, new { text = "ignored" });
+        var httpClient = new HttpClient(handlerMock.Object);
+        var loggerMock = new Mock<ILogger<WhisperTranscriptionService>>();
+        var service = new WhisperTranscriptionService(httpClient, _configMock.Object, loggerMock.Object);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            service.TranscribeAsync(null!, "MS123", new byte[] { 1, 2, 3 }));
+    }
+
+    [Fact]
+    public async Task TranscribeAsync_WithEmptyCallSid_ShouldThrow()
+    {
+        // Arrange
+        var handlerMock = SetupHandler(HttpStatusCode.OK, new { text = "ignored" });
+        var httpClient = new HttpClient(handlerMock.Object);
+        var loggerMock = new Mock<ILogger<WhisperTranscriptionService>>();
+        var service = new WhisperTranscriptionService(httpClient, _configMock.Object, loggerMock.Object);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            service.TranscribeAsync(string.Empty, "MS123", new byte[] { 1, 2, 3 }));
+    }
+
+    [Fact]
+    public async Task TranscribeAsync_WithNullStreamSid_ShouldThrow()
+    {
+        // Arrange
+        var handlerMock = SetupHandler(HttpStatusCode.OK, new { text = "ignored" });
+        var httpClient = new HttpClient(handlerMock.Object);
+        var loggerMock = new Mock<ILogger<WhisperTranscriptionService>>();
+        var service = new WhisperTranscriptionService(httpClient, _configMock.Object, loggerMock.Object);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            service.TranscribeAsync("CA123", null!, new byte[] { 1, 2, 3 }));
+    }
+
+    [Fact]
+    public async Task TranscribeAsync_WithEmptyStreamSid_ShouldThrow()
+    {
+        // Arrange
+        var handlerMock = SetupHandler(HttpStatusCode.OK, new { text = "ignored" });
+        var httpClient = new HttpClient(handlerMock.Object);
+        var loggerMock = new Mock<ILogger<WhisperTranscriptionService>>();
+        var service = new WhisperTranscriptionService(httpClient, _configMock.Object, loggerMock.Object);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            service.TranscribeAsync("CA123", string.Empty, new byte[] { 1, 2, 3 }));
+    }
+
     private static Mock<HttpMessageHandler> SetupHandler(HttpStatusCode statusCode, object payload)
     {
         var handlerMock = new Mock<HttpMessageHandler>();
