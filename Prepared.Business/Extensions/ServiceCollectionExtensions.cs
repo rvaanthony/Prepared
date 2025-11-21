@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
 using Prepared.Business.Interfaces;
 using Prepared.Business.Options;
@@ -92,14 +93,23 @@ public static class ServiceCollectionExtensions
             client.Timeout = TimeSpan.FromSeconds(config.TimeoutSeconds);
         });
 
-        // Register unified insights service for efficient single-call extraction
-        // Use longer timeout for gpt-5-mini which can take 30-60 seconds to respond
+        // Unified insights needs 90s+ timeout for gpt-5-mini. Global resilience handler has 10s attempt timeout.
         services.AddHttpClient<IUnifiedInsightsService, UnifiedInsightsService>((sp, client) =>
         {
             var config = sp.GetRequiredService<IOpenAiConfigurationService>();
-            // Set HTTP client timeout to 90 seconds for gpt-5-mini (default resilience handler timeout is 10s, but HTTP timeout will be the limiting factor)
-            // The default resilience handler's attempt timeout (10s) will be overridden by the longer HTTP client timeout
-            client.Timeout = TimeSpan.FromSeconds(Math.Max(config.TimeoutSeconds, 90));
+            var timeoutSeconds = Math.Max(config.TimeoutSeconds, 90);
+            client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
+        })
+        .AddStandardResilienceHandler()
+        .Configure((options, sp) =>
+        {
+            var config = sp.GetRequiredService<IOpenAiConfigurationService>();
+            var timeoutSeconds = Math.Max(config.TimeoutSeconds, 90);
+            var timeout = TimeSpan.FromSeconds(timeoutSeconds);
+            
+            options.AttemptTimeout.Timeout = timeout;
+            options.TotalRequestTimeout.Timeout = timeout.Add(TimeSpan.FromSeconds(5));
+            options.CircuitBreaker.SamplingDuration = timeout.Add(timeout);
         });
 
         // Register Twilio services

@@ -1,8 +1,6 @@
 name: Build and Test
 
 on:
-  push:
-    branches: [ main, env/production/client ]
   pull_request:
     branches: [ main, env/production/client ]
   workflow_dispatch:
