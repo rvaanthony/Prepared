@@ -4,7 +4,7 @@ using Prepared.Business.Interfaces;
 namespace Prepared.Client.APIs;
 
 /// <summary>
-/// Controller for handling Twilio Media Stream webhooks with production-ready error handling
+/// Processes Twilio Media Stream webhook events.
 /// </summary>
 [ApiController]
 [Route("api/twilio/media-stream")]

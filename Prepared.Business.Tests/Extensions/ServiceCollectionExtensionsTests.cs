@@ -154,6 +154,50 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public void AddBusinessServices_ShouldRegisterConfigurationServices()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddLogging();
+        var mockTranscriptHub = new Mock<ITranscriptHub>();
+        services.AddScoped<ITranscriptHub>(_ => mockTranscriptHub.Object);
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                { "Twilio:AccountSid", "AC123456789" },
+                { "Twilio:KeySid", "SK123456789" },
+                { "Twilio:SecretKey", "test_secret_key" },
+                { "Twilio:AuthToken", "test_auth_token" },
+                { "Twilio:WebhookUrl", "https://example.com" },
+                { "Whisper:ApiKey", "test_whisper_key" },
+                { "Whisper:Model", "whisper-1" },
+                { "Whisper:Endpoint", "https://api.openai.com/v1/audio/transcriptions" },
+                { "Whisper:TimeoutSeconds", "60" },
+                { "OpenAI:ApiKey", "test_openai_key" },
+                { "OpenAI:Endpoint", "https://api.openai.com/v1/" },
+                { "OpenAI:DefaultModel", "gpt-4o-mini" },
+                { "OpenAI:TimeoutSeconds", "30" },
+                { "MediaStream:AudioBufferSeconds", "4.0" },
+                { "MediaStream:SilenceThreshold", "0.9" },
+                { "MediaStream:SampleRate", "8000" }
+            })
+            .Build();
+        services.AddSingleton<IConfiguration>(configuration);
+        var environment = new Mock<IHostEnvironment>();
+        environment.Setup(e => e.EnvironmentName).Returns("Development");
+
+        // Act
+        services.AddBusinessServices(configuration, environment.Object);
+
+        // Assert - Verify configuration services are registered
+        var serviceProvider = services.BuildServiceProvider();
+        serviceProvider.GetService<IOpenAiConfigurationService>().Should().NotBeNull();
+        serviceProvider.GetService<IWhisperConfigurationService>().Should().NotBeNull();
+        serviceProvider.GetService<IMediaStreamConfigurationService>().Should().NotBeNull();
+        serviceProvider.GetService<ITwilioConfigurationService>().Should().NotBeNull();
+    }
+
+    [Fact]
     public void AddBusinessServices_ShouldRegisterServicesAsScoped()
     {
         // Arrange

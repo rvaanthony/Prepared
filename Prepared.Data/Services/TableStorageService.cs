@@ -47,7 +47,7 @@ public class TableStorageService : ITableStorageService
 
     public async Task UpsertEntityAsync(string tableName, ITableEntity entity, CancellationToken cancellationToken = default)
     {
-        if (entity == null) throw new ArgumentNullException(nameof(entity));
+        ArgumentNullException.ThrowIfNull(entity);
 
         await EnsureTableExistsAsync(tableName, cancellationToken);
         var tableClient = _tableServiceClient.GetTableClient(tableName);
@@ -163,7 +163,7 @@ public class TableStorageService : ITableStorageService
 
     public async Task<bool> InsertIfNotExistsAsync(string tableName, ITableEntity entity, CancellationToken cancellationToken = default)
     {
-        if (entity == null) throw new ArgumentNullException(nameof(entity));
+        ArgumentNullException.ThrowIfNull(entity);
 
         await EnsureTableExistsAsync(tableName, cancellationToken);
         var tableClient = _tableServiceClient.GetTableClient(tableName);
@@ -193,7 +193,7 @@ public class TableStorageService : ITableStorageService
 
     public async Task<bool> UpdateEntityWithETagAsync(string tableName, ITableEntity entity, CancellationToken cancellationToken = default)
     {
-        if (entity == null) throw new ArgumentNullException(nameof(entity));
+        ArgumentNullException.ThrowIfNull(entity);
 
         await EnsureTableExistsAsync(tableName, cancellationToken);
         var tableClient = _tableServiceClient.GetTableClient(tableName);

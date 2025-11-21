@@ -9,7 +9,7 @@ using Twilio.TwiML.Voice;
 namespace Prepared.Client.APIs;
 
 /// <summary>
-/// Controller for handling Twilio webhooks with production-ready security and error handling
+/// Handles Twilio call and status webhooks with signature validation.
 /// </summary>
 [ApiController]
 [Route("api/twilio")]

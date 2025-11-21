@@ -3,9 +3,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Prepared.Business.Interfaces;
-using Prepared.Business.Options;
 using Prepared.Common.Models;
 
 namespace Prepared.Business.Services;
@@ -18,21 +16,31 @@ public class WhisperTranscriptionService : ITranscriptionService
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
 
     private readonly HttpClient _httpClient;
-    private readonly WhisperOptions _options;
+    private readonly IWhisperConfigurationService _config;
     private readonly ILogger<WhisperTranscriptionService> _logger;
 
     public WhisperTranscriptionService(
         HttpClient httpClient,
-        IOptions<WhisperOptions> options,
+        IWhisperConfigurationService config,
         ILogger<WhisperTranscriptionService> logger)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-        _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
+        _config = config ?? throw new ArgumentNullException(nameof(config));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         ConfigureHttpClient();
     }
 
+    /// <summary>
+    /// Transcribes audio data using OpenAI's Whisper API.
+    /// </summary>
+    /// <param name="callSid">The unique identifier for the call.</param>
+    /// <param name="streamSid">The unique identifier for the media stream.</param>
+    /// <param name="audioBytes">The audio data in mu-law PCM format.</param>
+    /// <param name="isFinal">Whether this is the final audio chunk for the stream.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A transcription result, or null if transcription fails or audio is empty.</returns>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="callSid"/> or <paramref name="streamSid"/> is null or empty.</exception>
     public async Task<TranscriptionResult?> TranscribeAsync(
         string callSid,
         string streamSid,
@@ -40,6 +48,11 @@ public class WhisperTranscriptionService : ITranscriptionService
         bool isFinal = false,
         CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(callSid))
+            throw new ArgumentException("CallSid cannot be null or empty", nameof(callSid));
+        if (string.IsNullOrWhiteSpace(streamSid))
+            throw new ArgumentException("StreamSid cannot be null or empty", nameof(streamSid));
+            
         if (audioBytes.IsEmpty)
         {
             _logger.LogDebug("Skipping transcription (empty audio): CallSid={CallSid}, StreamSid={StreamSid}", callSid, streamSid);
@@ -90,14 +103,14 @@ public class WhisperTranscriptionService : ITranscriptionService
 
     private void ConfigureHttpClient()
     {
-        if (string.IsNullOrWhiteSpace(_options.ApiKey))
+        if (string.IsNullOrWhiteSpace(_config.ApiKey))
         {
             _logger.LogWarning("Whisper API key is missing. Transcriptions will be skipped.");
             return;
         }
 
-        _httpClient.BaseAddress = new Uri(_options.Endpoint.TrimEnd('/'));
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _options.ApiKey);
+        _httpClient.BaseAddress = new Uri(_config.Endpoint.TrimEnd('/'));
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _config.ApiKey);
     }
 
     private MultipartFormDataContent BuildMultipartContent(ReadOnlyMemory<byte> audioBytes, bool isFinal)
@@ -111,8 +124,8 @@ public class WhisperTranscriptionService : ITranscriptionService
         audioContent.Headers.ContentType = new MediaTypeHeaderValue("audio/wav");
         content.Add(audioContent, "file", $"chunk_{Guid.NewGuid():N}.wav");
 
-        content.Add(new StringContent(_options.Model), "model");
-        content.Add(new StringContent(_options.Temperature.ToString("0.0")), "temperature");
+        content.Add(new StringContent(_config.Model), "model");
+        content.Add(new StringContent(_config.Temperature.ToString("0.0")), "temperature");
 
         return content;
     }

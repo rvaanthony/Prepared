@@ -2,9 +2,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Prepared.Business.Interfaces;
-using Prepared.Business.Options;
 using Prepared.Common.Models;
 
 namespace Prepared.Business.Services;
@@ -16,24 +14,35 @@ namespace Prepared.Business.Services;
 public class OpenAiLocationExtractionService : ILocationExtractionService
 {
     private readonly HttpClient _httpClient;
-    private readonly OpenAiOptions _options;
+    private readonly IOpenAiConfigurationService _config;
     private readonly ILogger<OpenAiLocationExtractionService> _logger;
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
 
     public OpenAiLocationExtractionService(
         HttpClient httpClient,
-        IOptions<OpenAiOptions> options,
+        IOpenAiConfigurationService config,
         ILogger<OpenAiLocationExtractionService> logger)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-        _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
+        _config = config ?? throw new ArgumentNullException(nameof(config));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         ConfigureClient();
     }
 
+    /// <summary>
+    /// Extracts location information from a call transcript using OpenAI.
+    /// </summary>
+    /// <param name="callSid">The unique identifier for the call.</param>
+    /// <param name="transcript">The transcript text to analyze.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A location extraction result with address and coordinates, or null if no location found or extraction fails.</returns>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="callSid"/> is null or empty.</exception>
     public async Task<LocationExtractionResult?> ExtractAsync(string callSid, string transcript, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(callSid))
+            throw new ArgumentException("CallSid cannot be null or empty", nameof(callSid));
+            
         if (string.IsNullOrWhiteSpace(transcript))
         {
             _logger.LogDebug("Skipping location extraction - transcript is empty: CallSid={CallSid}", callSid);
@@ -53,7 +62,7 @@ INSTRUCTIONS:
 5. Return a confidence score (0.0 to 1.0)
 
 EXAMPLES:
-- ""I'm at 330 West 20th Avenue"" → address: ""330 West 20th Avenue"", confidence: 0.9
+- ""I'm at 600 East Broad Street in Richmond, Virginia"" → address: ""600 East Broad Street, Richmond, Virginia"", confidence: 0.9
 - ""Corner of Main and 5th"" → address: ""Main Street and 5th Street"", confidence: 0.7
 - ""At the Starbucks on Market Street"" → address: ""Starbucks, Market Street"", confidence: 0.6
 
@@ -71,7 +80,7 @@ If NO location found, return:
   ""confidence"": 0.0
 }";
 
-            var model = _options.LocationModel ?? _options.DefaultModel;
+            var model = _config.LocationModel;
             var isGpt5Model = model.StartsWith("gpt-5", StringComparison.OrdinalIgnoreCase);
             
             object payload;
@@ -178,10 +187,10 @@ Return ONLY a JSON object with this exact structure (no other text):
 
 Use your best knowledge of real-world locations. If the address is incomplete, make your best guess based on context.
 For example:
-- ""330 West 20th Avenue, San Mateo, California"" should return coordinates near San Mateo
+- ""600 East Broad Street, Richmond, Virginia"" should return coordinates near Richmond
 - ""Main Street"" without a city should return null values";
 
-            var model = _options.DefaultModel;
+            var model = _config.DefaultModel;
             var isGpt5Model = model.StartsWith("gpt-5", StringComparison.OrdinalIgnoreCase);
             
             object payload;
@@ -239,9 +248,9 @@ For example:
 
     private void ConfigureClient()
     {
-        _httpClient.BaseAddress = new Uri(_options.Endpoint.TrimEnd('/') + "/");
+        _httpClient.BaseAddress = new Uri(_config.Endpoint.TrimEnd('/') + "/");
         _httpClient.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", _options.ApiKey);
+            new AuthenticationHeaderValue("Bearer", _config.ApiKey);
     }
 
     private sealed record LocationCompletionResponse(ChatChoice[] Choices);

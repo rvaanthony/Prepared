@@ -39,7 +39,7 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddDataServices_WithNullConfiguration_ShouldNotThrow()
+    public void AddDataServices_WithNullConfiguration_ShouldThrow()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -47,7 +47,7 @@ public class ServiceCollectionExtensionsTests
 
         // Act & Assert
         var act = () => services.AddDataServices(configuration!);
-        act.Should().NotThrow();
+        act.Should().Throw<ArgumentNullException>();
     }
 }
 

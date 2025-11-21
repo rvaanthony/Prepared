@@ -1,14 +1,12 @@
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Prepared.Business.Interfaces;
-using Prepared.Business.Options;
 using Prepared.Data.Interfaces;
 
 namespace Prepared.Business.Services;
 
 /// <summary>
-/// Service for handling Twilio Media Streams with production-ready error handling
+/// Coordinates Twilio media stream lifecycle events and downstream processing.
 /// </summary>
 public class MediaStreamService : IMediaStreamService
 {
@@ -22,7 +20,7 @@ public class MediaStreamService : IMediaStreamService
     private readonly ITranscriptRepository _transcriptRepository;
     private readonly ISummaryRepository _summaryRepository;
     private readonly ILocationRepository _locationRepository;
-    private readonly MediaStreamOptions _options;
+    private readonly IMediaStreamConfigurationService _config;
     private readonly Dictionary<string, DateTime> _activeStreams = new();
     private readonly Dictionary<string, string> _streamToCallMapping = new(); // Maps StreamSid to CallSid
     private readonly Dictionary<string, List<string>> _transcriptBuffers = new(); // CallSid => transcript segments
@@ -42,7 +40,7 @@ public class MediaStreamService : IMediaStreamService
         ITranscriptRepository transcriptRepository,
         ISummaryRepository summaryRepository,
         ILocationRepository locationRepository,
-        IOptions<MediaStreamOptions> options)
+        IMediaStreamConfigurationService config)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _transcriptHub = transcriptHub ?? throw new ArgumentNullException(nameof(transcriptHub));
@@ -54,7 +52,7 @@ public class MediaStreamService : IMediaStreamService
         _transcriptRepository = transcriptRepository ?? throw new ArgumentNullException(nameof(transcriptRepository));
         _summaryRepository = summaryRepository ?? throw new ArgumentNullException(nameof(summaryRepository));
         _locationRepository = locationRepository ?? throw new ArgumentNullException(nameof(locationRepository));
-        _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
+        _config = config ?? throw new ArgumentNullException(nameof(config));
     }
 
     public async Task HandleStreamStartAsync(string streamSid, string callSid, CancellationToken cancellationToken = default)
@@ -145,7 +143,7 @@ public class MediaStreamService : IMediaStreamService
 
                 // Calculate minimum bytes based on configured buffer duration
                 // At 8kHz μ-law (8-bit, mono), 1 second ≈ 8000 bytes
-                var minBytesForTranscription = (int)(_options.SampleRate * _options.AudioBufferSeconds);
+                var minBytesForTranscription = (int)(_config.SampleRate * _config.AudioBufferSeconds);
                 if (audioBuffer.Count < minBytesForTranscription)
                 {
                     _logger.LogDebug(
@@ -219,8 +217,6 @@ public class MediaStreamService : IMediaStreamService
                     _logger.LogDebug("No call mapping found for StreamSid={StreamSid}", streamSid);
                 }
             }
-
-            await Task.CompletedTask;
         }
         catch (Exception ex)
         {
@@ -433,7 +429,7 @@ public class MediaStreamService : IMediaStreamService
             if (insights?.Location is { Latitude: double lat, Longitude: double lng })
             {
                 _logger.LogInformation(
-                    "🎯 REAL-TIME location found! CallSid={CallSid}, Address={Address}, Lat={Lat}, Lng={Lng}",
+                    "Real-time location found: CallSid={CallSid}, Address={Address}, Lat={Lat}, Lng={Lng}",
                     callSid, insights.Location.FormattedAddress, lat, lng);
 
                 // Mark as found so we don't keep checking
@@ -463,7 +459,7 @@ public class MediaStreamService : IMediaStreamService
             if (insights?.Summary != null)
             {
                 _logger.LogInformation(
-                    "📝 REAL-TIME summary extracted: CallSid={CallSid}, KeyFindings={Count}",
+                    "Real-time summary extracted: CallSid={CallSid}, KeyFindings={Count}",
                     callSid, insights.Summary.KeyFindings?.Count ?? 0);
 
                 // Save summary
@@ -633,7 +629,7 @@ public class MediaStreamService : IMediaStreamService
 
         // Use configurable threshold
         var silenceRatio = (double)silentCount / muLawAudio.Length;
-        return silenceRatio > _options.SilenceThreshold;
+        return silenceRatio > _config.SilenceThreshold;
     }
 }
 

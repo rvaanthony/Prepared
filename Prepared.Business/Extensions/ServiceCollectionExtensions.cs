@@ -34,8 +34,12 @@ public static class ServiceCollectionExtensions
         services.Configure<OpenAiOptions>(configuration.GetSection(OpenAiOptions.SectionName));
         services.Configure<MediaStreamOptions>(configuration.GetSection(MediaStreamOptions.SectionName));
         
-        // Register Twilio configuration service (read-only container for configuration values)
+        // Register configuration services (read-only containers for configuration values)
+        // These provide consistent access patterns and make testing easier
         services.AddSingleton<ITwilioConfigurationService, TwilioConfigurationService>();
+        services.AddSingleton<IOpenAiConfigurationService, OpenAiConfigurationService>();
+        services.AddSingleton<IWhisperConfigurationService, WhisperConfigurationService>();
+        services.AddSingleton<IMediaStreamConfigurationService, MediaStreamConfigurationService>();
 
         // Validate options at startup (fail fast if misconfigured)
         services.AddOptions<WhisperOptions>()
@@ -69,32 +73,33 @@ public static class ServiceCollectionExtensions
             .ValidateOnStart();
 
         // Register HTTP clients with explicit timeouts and proper configuration
+        // Using configuration services for consistent access patterns
         services.AddHttpClient<ITranscriptionService, WhisperTranscriptionService>((sp, client) =>
         {
-            var options = sp.GetRequiredService<IOptions<WhisperOptions>>().Value;
-            client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+            var config = sp.GetRequiredService<IWhisperConfigurationService>();
+            client.Timeout = TimeSpan.FromSeconds(config.TimeoutSeconds);
         });
 
         services.AddHttpClient<ISummarizationService, OpenAiSummarizationService>((sp, client) =>
         {
-            var options = sp.GetRequiredService<IOptions<OpenAiOptions>>().Value;
-            client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+            var config = sp.GetRequiredService<IOpenAiConfigurationService>();
+            client.Timeout = TimeSpan.FromSeconds(config.TimeoutSeconds);
         });
 
         services.AddHttpClient<ILocationExtractionService, OpenAiLocationExtractionService>((sp, client) =>
         {
-            var options = sp.GetRequiredService<IOptions<OpenAiOptions>>().Value;
-            client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+            var config = sp.GetRequiredService<IOpenAiConfigurationService>();
+            client.Timeout = TimeSpan.FromSeconds(config.TimeoutSeconds);
         });
 
         // Register unified insights service for efficient single-call extraction
         // Use longer timeout for gpt-5-mini which can take 30-60 seconds to respond
         services.AddHttpClient<IUnifiedInsightsService, UnifiedInsightsService>((sp, client) =>
         {
-            var options = sp.GetRequiredService<IOptions<OpenAiOptions>>().Value;
+            var config = sp.GetRequiredService<IOpenAiConfigurationService>();
             // Set HTTP client timeout to 90 seconds for gpt-5-mini (default resilience handler timeout is 10s, but HTTP timeout will be the limiting factor)
             // The default resilience handler's attempt timeout (10s) will be overridden by the longer HTTP client timeout
-            client.Timeout = TimeSpan.FromSeconds(Math.Max(options.TimeoutSeconds, 90));
+            client.Timeout = TimeSpan.FromSeconds(Math.Max(config.TimeoutSeconds, 90));
         });
 
         // Register Twilio services

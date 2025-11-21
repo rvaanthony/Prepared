@@ -21,8 +21,7 @@ public class LocationRepository : ILocationRepository
 
     public async Task UpsertAsync(LocationExtractionResult location, CancellationToken cancellationToken = default)
     {
-        if (location == null)
-            throw new ArgumentNullException(nameof(location));
+        ArgumentNullException.ThrowIfNull(location);
 
         try
         {

@@ -1,16 +1,32 @@
 namespace Prepared.Client.Middleware;
 
+/// <summary>
+/// Middleware that adds comprehensive security headers to all HTTP responses.
+/// Implements defense-in-depth security practices including CSP, HSTS, and XSS protection.
+/// </summary>
 public class SecurityHeadersMiddleware
 {
     private readonly RequestDelegate _next;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SecurityHeadersMiddleware"/> class.
+    /// </summary>
+    /// <param name="next">The next middleware in the pipeline.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="next"/> is null.</exception>
     public SecurityHeadersMiddleware(RequestDelegate next)
     {
-        _next = next;
+        _next = next ?? throw new ArgumentNullException(nameof(next));
     }
 
+    /// <summary>
+    /// Invokes the middleware to add security headers to the HTTP response.
+    /// </summary>
+    /// <param name="context">The HTTP context.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="context"/> is null.</exception>
     public async Task InvokeAsync(HttpContext context)
     {
+        ArgumentNullException.ThrowIfNull(context);
+
         // Add security headers
         context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
         context.Response.Headers.Append("X-Frame-Options", "DENY");

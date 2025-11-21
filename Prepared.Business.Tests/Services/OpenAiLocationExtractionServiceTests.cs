@@ -1,10 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Moq;
 using Moq.Protected;
-using Prepared.Business.Options;
+using Prepared.Business.Interfaces;
 using Prepared.Business.Services;
 using Xunit;
 
@@ -12,12 +11,18 @@ namespace Prepared.Business.Tests.Services;
 
 public class OpenAiLocationExtractionServiceTests
 {
-    private readonly OpenAiOptions _options = new()
+    private readonly Mock<IOpenAiConfigurationService> _configMock;
+
+    public OpenAiLocationExtractionServiceTests()
     {
-        ApiKey = "test-key",
-        Endpoint = "https://api.openai.com/v1/",
-        LocationModel = "gpt-4o-mini"
-    };
+        _configMock = new Mock<IOpenAiConfigurationService>();
+        _configMock.Setup(x => x.ApiKey).Returns("test-key");
+        _configMock.Setup(x => x.Endpoint).Returns("https://api.openai.com/v1/");
+        _configMock.Setup(x => x.DefaultModel).Returns("gpt-4o-mini");
+        _configMock.Setup(x => x.LocationModel).Returns("gpt-4o-mini");
+        _configMock.Setup(x => x.SummarizationModel).Returns("gpt-4o-mini");
+        _configMock.Setup(x => x.TimeoutSeconds).Returns(60);
+    }
 
     [Fact]
     public async Task ExtractAsync_WithValidResponse_ShouldReturnLocation()
@@ -40,7 +45,7 @@ public class OpenAiLocationExtractionServiceTests
         var httpClient = new HttpClient(handler.Object);
         var logger = new Mock<ILogger<OpenAiLocationExtractionService>>();
 
-        var service = new OpenAiLocationExtractionService(httpClient, Microsoft.Extensions.Options.Options.Create(_options), logger.Object);
+        var service = new OpenAiLocationExtractionService(httpClient, _configMock.Object, logger.Object);
 
         // Act
         var result = await service.ExtractAsync("CA123", "Caller at 123 Main St");
@@ -56,6 +61,34 @@ public class OpenAiLocationExtractionServiceTests
             Times.Exactly(2),
             ItExpr.IsAny<HttpRequestMessage>(),
             ItExpr.IsAny<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ExtractAsync_WithNullCallSid_ShouldThrow()
+    {
+        // Arrange
+        var handler = SetupHandler(HttpStatusCode.OK, new { choices = Array.Empty<object>() });
+        var httpClient = new HttpClient(handler.Object);
+        var logger = new Mock<ILogger<OpenAiLocationExtractionService>>();
+        var service = new OpenAiLocationExtractionService(httpClient, _configMock.Object, logger.Object);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            service.ExtractAsync(null!, "test transcript"));
+    }
+
+    [Fact]
+    public async Task ExtractAsync_WithEmptyCallSid_ShouldThrow()
+    {
+        // Arrange
+        var handler = SetupHandler(HttpStatusCode.OK, new { choices = Array.Empty<object>() });
+        var httpClient = new HttpClient(handler.Object);
+        var logger = new Mock<ILogger<OpenAiLocationExtractionService>>();
+        var service = new OpenAiLocationExtractionService(httpClient, _configMock.Object, logger.Object);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            service.ExtractAsync(string.Empty, "test transcript"));
     }
 
     private static Mock<HttpMessageHandler> SetupHandler(HttpStatusCode statusCode, object payload)

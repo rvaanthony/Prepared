@@ -44,10 +44,10 @@ public class MediaStreamWebSocketHandler
 
             var buffer = new byte[1024 * 16];
 
-            while (true)
+            while (webSocket.State == WebSocketState.Open)
             {
                 var result = await webSocket.ReceiveAsync(
-                    new ArraySegment<byte>(buffer), CancellationToken.None);
+                    new ArraySegment<byte>(buffer), context.RequestAborted);
 
                 if (result.MessageType == WebSocketMessageType.Close)
                 {
@@ -122,10 +122,13 @@ public class MediaStreamWebSocketHandler
                 }
             }
 
-            await webSocket.CloseAsync(
-                WebSocketCloseStatus.NormalClosure,
-                "Closing",
-                CancellationToken.None);
+            if (webSocket.State == WebSocketState.Open || webSocket.State == WebSocketState.CloseReceived)
+            {
+                await webSocket.CloseAsync(
+                    WebSocketCloseStatus.NormalClosure,
+                    "Closing",
+                    context.RequestAborted);
+            }
 
             _logger.LogInformation(
                 "Media stream WebSocket connection closed. StreamSid={StreamSid}, CallSid={CallSid}",

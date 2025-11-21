@@ -245,6 +245,79 @@ public class TwilioServiceTests
             new TwilioService(_loggerMock.Object, _configMock.Object, _transcriptHubMock.Object, null!));
     }
 
+    [Fact]
+    public async Task HandleIncomingCallAsync_WithNullCallInfo_ShouldThrow()
+    {
+        // Arrange
+        CallInfo? callInfo = null;
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            _service.HandleIncomingCallAsync(callInfo!));
+    }
+
+    [Fact]
+    public async Task HandleCallStatusUpdateAsync_WithNullCallSid_ShouldThrow()
+    {
+        // Arrange
+        string? callSid = null;
+        var status = "completed";
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _service.HandleCallStatusUpdateAsync(callSid!, status));
+    }
+
+    [Fact]
+    public async Task HandleCallStatusUpdateAsync_WithEmptyCallSid_ShouldThrow()
+    {
+        // Arrange
+        var callSid = string.Empty;
+        var status = "completed";
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _service.HandleCallStatusUpdateAsync(callSid, status));
+    }
+
+    [Fact]
+    public async Task HandleCallStatusUpdateAsync_WithNullStatus_ShouldThrow()
+    {
+        // Arrange
+        var callSid = "CA123456789";
+        string? status = null;
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _service.HandleCallStatusUpdateAsync(callSid, status!));
+    }
+
+    [Fact]
+    public void ValidateWebhookSignature_WithNullUrl_ShouldThrow()
+    {
+        // Arrange
+        string? url = null;
+        var parameters = new Dictionary<string, string>();
+        var signature = "test-signature";
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() =>
+            _service.ValidateWebhookSignature(url!, parameters, signature));
+    }
+
+    [Fact]
+    public void ValidateWebhookSignature_WithNullParameters_ShouldThrow()
+    {
+        // Arrange
+        var url = "https://example.com/webhook";
+        Dictionary<string, string>? parameters = null;
+        var signature = "test-signature";
+
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() =>
+            _service.ValidateWebhookSignature(url, parameters!, signature));
+    }
+
     [Theory]
     [InlineData("queued", CallStatus.Queued)]
     [InlineData("initiated", CallStatus.Initiated)]

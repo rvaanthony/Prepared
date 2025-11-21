@@ -1,4 +1,5 @@
 using FluentValidation;
+using Microsoft.AspNetCore.ResponseCompression;
 using Prepared.Business.Extensions;
 using Prepared.Data.Extensions;
 using Prepared.Client.Middleware;
@@ -119,6 +120,7 @@ public class Program
 
         // Add SEO and Performance Middleware
         app.UseResponseCaching();
+        app.UseResponseCompression();
         app.UseStaticFiles(new StaticFileOptions
         {
             OnPrepareResponse = ctx =>
@@ -148,12 +150,6 @@ public class Program
                     case ".eot":
                         ctx.Context.Response.ContentType = "application/vnd.ms-fontobject";
                         break;
-                }
-                
-                // Add compression for text-based files
-                if (ctx.File.Name.EndsWith(".css") || ctx.File.Name.EndsWith(".js") || ctx.File.Name.EndsWith(".html"))
-                {
-                    ctx.Context.Response.Headers.Append("Content-Encoding", "gzip");
                 }
             }
         });
@@ -213,6 +209,10 @@ public class Program
 
         // Infrastructure services
         builder.Services.AddResponseCaching();
+        builder.Services.AddResponseCompression(options =>
+        {
+            options.EnableForHttps = true;
+        });
         builder.Services.AddRouting(options => options.LowercaseUrls = true);
         builder.Services.AddMemoryCache();
     }

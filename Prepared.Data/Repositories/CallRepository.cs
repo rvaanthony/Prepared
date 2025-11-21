@@ -21,8 +21,7 @@ public class CallRepository : ICallRepository
 
     public async Task UpsertAsync(CallInfo callInfo, CancellationToken cancellationToken = default)
     {
-        if (callInfo == null)
-            throw new ArgumentNullException(nameof(callInfo));
+        ArgumentNullException.ThrowIfNull(callInfo);
 
         try
         {
@@ -89,7 +88,7 @@ public class CallRepository : ICallRepository
         try
         {
             var existing = await GetByCallSidAsync(callSid, cancellationToken);
-            if (existing == null)
+            if (existing is null)
             {
                 _logger.LogWarning("Call not found for status update: CallSid={CallSid}", callSid);
                 return;
@@ -117,7 +116,7 @@ public class CallRepository : ICallRepository
         try
         {
             var existing = await GetByCallSidAsync(callSid, cancellationToken);
-            if (existing == null)
+            if (existing is null)
             {
                 _logger.LogWarning("Call not found for stream info update: CallSid={CallSid}", callSid);
                 return;
