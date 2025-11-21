@@ -79,37 +79,29 @@ public static class ServiceCollectionExtensions
         {
             var config = sp.GetRequiredService<IWhisperConfigurationService>();
             client.Timeout = TimeSpan.FromSeconds(config.TimeoutSeconds);
-        });
+        })
+        .AddStandardResilienceHandler();
 
         services.AddHttpClient<ISummarizationService, OpenAiSummarizationService>((sp, client) =>
         {
             var config = sp.GetRequiredService<IOpenAiConfigurationService>();
             client.Timeout = TimeSpan.FromSeconds(config.TimeoutSeconds);
-        });
+        })
+        .AddStandardResilienceHandler();
 
         services.AddHttpClient<ILocationExtractionService, OpenAiLocationExtractionService>((sp, client) =>
         {
             var config = sp.GetRequiredService<IOpenAiConfigurationService>();
             client.Timeout = TimeSpan.FromSeconds(config.TimeoutSeconds);
-        });
+        })
+        .AddStandardResilienceHandler();
 
-        // Unified insights needs 90s+ timeout for gpt-5-mini. Global resilience handler has 10s attempt timeout.
+        // Unified insights needs 90s+ timeout for gpt-5-mini.
         services.AddHttpClient<IUnifiedInsightsService, UnifiedInsightsService>((sp, client) =>
         {
             var config = sp.GetRequiredService<IOpenAiConfigurationService>();
             var timeoutSeconds = Math.Max(config.TimeoutSeconds, 90);
             client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
-        })
-        .AddStandardResilienceHandler()
-        .Configure((options, sp) =>
-        {
-            var config = sp.GetRequiredService<IOpenAiConfigurationService>();
-            var timeoutSeconds = Math.Max(config.TimeoutSeconds, 90);
-            var timeout = TimeSpan.FromSeconds(timeoutSeconds);
-            
-            options.AttemptTimeout.Timeout = timeout;
-            options.TotalRequestTimeout.Timeout = timeout.Add(TimeSpan.FromSeconds(5));
-            options.CircuitBreaker.SamplingDuration = timeout.Add(timeout);
         });
 
         // Register Twilio services
