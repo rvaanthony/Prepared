@@ -93,29 +93,20 @@ public static class ServiceCollectionExtensions
             client.Timeout = TimeSpan.FromSeconds(config.TimeoutSeconds);
         });
 
-        // Register unified insights service for efficient single-call extraction.
-        // IMPORTANT: gpt-5-mini can take 30-60+ seconds to respond. The global standard resilience handler
-        // (from ServiceDefaults) uses a 10-second attempt timeout, which is incompatible with this service.
-        // We do NOT add any resilience handler here. Instead, we rely on the HTTP client timeout and
-        // the service's own error handling to manage long-running requests gracefully.
+        // Unified insights needs 90s+ timeout for gpt-5-mini. Global resilience handler has 10s attempt timeout.
         services.AddHttpClient<IUnifiedInsightsService, UnifiedInsightsService>((sp, client) =>
         {
             var config = sp.GetRequiredService<IOpenAiConfigurationService>();
-            // Minimum 90 seconds to accommodate gpt-5-mini response times
             var timeoutSeconds = Math.Max(config.TimeoutSeconds, 90);
             client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
         })
-#pragma warning disable EXTEXP0001 // Remove and reconfigure resilience handler
-        .RemoveAllResilienceHandlers()
-#pragma warning restore EXTEXP0001
         .AddStandardResilienceHandler()
         .Configure((options, sp) =>
         {
             var config = sp.GetRequiredService<IOpenAiConfigurationService>();
             var timeoutSeconds = Math.Max(config.TimeoutSeconds, 90);
             var timeout = TimeSpan.FromSeconds(timeoutSeconds);
-
-            // Override all timeout values to match the long-running nature of this service
+            
             options.AttemptTimeout.Timeout = timeout;
             options.TotalRequestTimeout.Timeout = timeout.Add(TimeSpan.FromSeconds(5));
             options.CircuitBreaker.SamplingDuration = timeout.Add(timeout);
