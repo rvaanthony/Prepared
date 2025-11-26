@@ -1,15 +1,26 @@
 # Prepared
 
-A real-time call processing and intelligence extraction system that demonstrates enterprise-grade software engineering practices. This application processes incoming phone calls, performs live transcription, extracts actionable insights using AI, and visualizes location data on an interactive map—all in real-time.
+A personal real-time call processing and intelligence extraction system. This application processes incoming phone calls, performs live transcription, extracts actionable insights using AI, and visualizes location data on an interactive map—all in real-time.
+
+## Demo
+
+### Video Walkthrough
+Watch the complete process in action:
+
+https://preparedproduction.blob.core.windows.net/public/Demo.mp4
+
+### Screenshot
+
+![Screenshot after receiving a call](https://preparedproduction.blob.core.windows.net/public/Demo.jpg)
 
 ## What It Does
 
-Prepared is a full-stack application designed to handle emergency dispatch scenarios or call center operations. When a call comes in:
+This is a full-stack application designed to handle emergency dispatch scenarios or call center operations. When a call comes in:
 
 1. **Call Reception**: Twilio receives the call and establishes a WebSocket connection to stream audio in real-time
 2. **Live Transcription**: Audio chunks are buffered and sent to OpenAI's Whisper API for real-time transcription
 3. **Real-Time Updates**: Transcripts are pushed to connected web clients via SignalR as they're generated
-4. **Intelligence Extraction**: Once sufficient context is gathered, the system uses GPT to extract:
+4. **Intelligence Extraction**: Once sufficient context is gathered, the system uses GPT-5 to extract:
    - Location information (addresses, coordinates)
    - Incident summaries
    - Key findings and urgency indicators
@@ -23,7 +34,7 @@ This project follows **Clean Architecture** principles with clear separation of 
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  Prepared.Client (ASP.NET Core MVC)                      │
+│  Prepared.Client (ASP.NET Core MVC)                     │
 │  - Controllers, Views, SignalR Hubs                     │
 │  - WebSocket handlers for Twilio Media Streams          │
 │  - Middleware (Security, Rate Limiting, CORS)           │
@@ -31,10 +42,10 @@ This project follows **Clean Architecture** principles with clear separation of 
                    │
 ┌──────────────────▼──────────────────────────────────────┐
 │  Prepared.Business (Business Logic Layer)               │
-│  - TwilioService: Call handling & TwiML generation     │
+│  - TwilioService: Call handling & TwiML generation      │
 │  - MediaStreamService: WebSocket audio processing       │
 │  - WhisperTranscriptionService: Real-time transcription │
-│  - UnifiedInsightsService: AI-powered extraction       │
+│  - UnifiedInsightsService: AI-powered extraction        │
 │  - Repository interfaces                                │
 └──────────────────┬──────────────────────────────────────┘
                    │
@@ -46,7 +57,7 @@ This project follows **Clean Architecture** principles with clear separation of 
                    │
 ┌──────────────────▼──────────────────────────────────────┐
 │  Prepared.Common (Shared Domain Models)                 │
-│  - DTOs, Enums, Interfaces, Utilities                  │
+│  - DTOs, Enums, Interfaces, Utilities                   │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -65,12 +76,12 @@ This project follows **Clean Architecture** principles with clear separation of 
 - **ASP.NET Core MVC** - Web application framework
 - **SignalR** - Real-time bidirectional communication
 - **Azure Data Tables** - NoSQL storage for call records and transcripts
-- **.NET Aspire** - Cloud-native orchestration and service defaults
+- **Aspire** - Cloud-native orchestration and service defaults
 
 ### External Services & APIs
 - **Twilio** - Voice call handling and Media Streams (WebSocket-based audio streaming)
 - **OpenAI Whisper API** - Real-time speech-to-text transcription
-- **OpenAI GPT API** - Natural language understanding for location extraction and summarization
+- **OpenAI GPT-5 API** - Natural language understanding for location extraction and summarization
 - **Google Maps JavaScript API** - Interactive mapping and geocoding
 
 ### Frontend
@@ -101,13 +112,13 @@ This project follows **Clean Architecture** principles with clear separation of 
 
 ### AI/ML Integration
 - **API Integration**: Consuming OpenAI's REST APIs with proper error handling and retry logic
-- **Prompt Engineering**: Structured prompts for consistent JSON extraction from GPT responses
+- **Prompt Engineering**: Structured prompts for consistent JSON extraction from GPT-5 responses
 - **Cost Optimization**: Unified API calls to reduce token usage and latency
-- **Model Selection**: Support for different GPT models (including reasoning models like o1) based on use case
+- **Model Selection**: Support for different GPT-5 models based on use case
 
 ### Cloud Architecture
 - **Azure Integration**: Azure Table Storage for scalable, serverless data persistence
-- **Service Orchestration**: .NET Aspire for cloud-native application hosting
+- **Service Orchestration**: Aspire for cloud-native application hosting
 - **Configuration Management**: Environment-based configuration with validation
 
 ### Security & Performance
@@ -140,7 +151,7 @@ This project follows **Clean Architecture** principles with clear separation of 
 - **Prepared.Business**: Business logic layer with services and interfaces
 - **Prepared.Data**: Data access layer with Azure Table Storage repositories
 - **Prepared.Common**: Shared models, enums, interfaces, and utilities
-- **Prepared.ServiceDefaults**: .NET Aspire service defaults and configuration
+- **Prepared.ServiceDefaults**: Aspire service defaults and configuration
 - **Prepared.AppHost**: Aspire application host for orchestration
 
 ### Test Projects
@@ -200,7 +211,7 @@ Set the following in `appsettings.Development.json` or user secrets:
   },
   "OpenAI": {
     "ApiKey": "your-openai-api-key",
-    "DefaultModel": "gpt-4o-mini"
+    "DefaultModel": "gpt-5"
   }
 }
 ```
@@ -242,13 +253,8 @@ This codebase demonstrates production-ready engineering practices:
 - ✅ **Production Ready** - Error handling, resilience patterns, monitoring, graceful degradation
 - ✅ **Best Practices** - Dependency injection, configuration management, middleware patterns
 
-## Why This Project
+## Personal Project
 
-This project showcases the ability to build complex, real-time systems that integrate multiple external services while maintaining code quality, testability, and production readiness. It demonstrates:
-
-- **Full-Stack Capability**: From low-level WebSocket handling to high-level AI integration
-- **Real-World Complexity**: Handling edge cases, error scenarios, and performance considerations
-- **Modern Practices**: Using latest .NET features, cloud-native patterns, and industry-standard tooling
-- **Production Mindset**: Security, observability, and maintainability are built in from the start
+This is a personal project built for my own use. It demonstrates the ability to build complex, real-time systems that integrate multiple external services while maintaining code quality, testability, and production readiness.
 
 The architecture is designed to scale, the code is designed to be maintained, and the system is designed to be reliable.
