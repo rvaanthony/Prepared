@@ -1,6 +1,6 @@
 # Prepared
 
-A real-time call processing and intelligence extraction system that demonstrates enterprise-grade software engineering practices. This application processes incoming phone calls, performs live transcription, extracts actionable insights using AI, and visualizes location data on an interactive map—all in real-time.
+A personal real-time call processing and intelligence extraction system. This application processes incoming phone calls, performs live transcription, extracts actionable insights using AI, and visualizes location data on an interactive map—all in real-time.
 
 ## Demo
 
@@ -15,7 +15,7 @@ https://preparedproduction.blob.core.windows.net/public/Demo.mp4
 
 ## What It Does
 
-Prepared is a full-stack application designed to handle emergency dispatch scenarios or call center operations. When a call comes in:
+This is a full-stack application designed to handle emergency dispatch scenarios or call center operations. When a call comes in:
 
 1. **Call Reception**: Twilio receives the call and establishes a WebSocket connection to stream audio in real-time
 2. **Live Transcription**: Audio chunks are buffered and sent to OpenAI's Whisper API for real-time transcription
@@ -253,13 +253,8 @@ This codebase demonstrates production-ready engineering practices:
 - ✅ **Production Ready** - Error handling, resilience patterns, monitoring, graceful degradation
 - ✅ **Best Practices** - Dependency injection, configuration management, middleware patterns
 
-## Why This Project
+## Personal Project
 
-This project showcases the ability to build complex, real-time systems that integrate multiple external services while maintaining code quality, testability, and production readiness. It demonstrates:
-
-- **Full-Stack Capability**: From low-level WebSocket handling to high-level AI integration
-- **Real-World Complexity**: Handling edge cases, error scenarios, and performance considerations
-- **Modern Practices**: Using latest .NET features, cloud-native patterns, and industry-standard tooling
-- **Production Mindset**: Security, observability, and maintainability are built in from the start
+This is a personal project built for my own use. It demonstrates the ability to build complex, real-time systems that integrate multiple external services while maintaining code quality, testability, and production readiness.
 
 The architecture is designed to scale, the code is designed to be maintained, and the system is designed to be reliable.
